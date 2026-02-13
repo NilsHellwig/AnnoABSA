@@ -7,13 +7,17 @@
 Accepted at **LREC 2026** (15th edition) · Palma, Mallorca (Spain)
 
 [![Paper](https://img.shields.io/badge/Paper-LREC%202026-blue?style=for-the-badge&logo=googlescholar)](TBA)
-[![Model](https://img.shields.io/badge/Gemma--3--27B-FFAB00?style=for-the-badge&logo=googlegemini)](https://huggingface.co/google/gemma-3-27b-it)
+[![Correspondence](https://img.shields.io/badge/Contact-Nils%20Hellwig-darkred?style=for-the-badge&logo=minutemailer)](mailto:nils-constantin.hellwig@ur.de)
 
 ---
 
-**Nils Constantin Hellwig · Jakob Fehle · Udo Kruschwitz · Christian Wolff**
+**Nils Constantin Hellwig¹✉ · Jakob Fehle¹ · Udo Kruschwitz² · Christian Wolff¹**
 
-University of Regensburg, Germany
+¹Media Informatics Group, University of Regensburg, Germany  
+²Information Science Group, University of Regensburg, Germany
+
+*✉ Correspondence to: [nils-constantin.hellwig@ur.de](mailto:nils-constantin.hellwig@ur.de)*  
+`{nils-constantin.hellwig, jakob.fehle, udo.kruschwitz, christian.wolff}@ur.de`
 
 ---
 
@@ -26,7 +30,16 @@ University of Regensburg, Germany
 ## 📜 Citation (TBA)
 
 ```bibtex
-tba
+@inproceedings{hellwig-etal-2026-annoabsa,
+    title = "{A}nno{ABSA}: A Web-Based Annotation Tool for Aspect-Based Sentiment Analysis with Retrieval-Augmented Suggestions",
+    author = "Hellwig, Nils Constantin and Fehle, Jakob and Kruschwitz, Udo and Wolff, Christian",
+    booktitle = "Proceedings of the 15th Language Resources and Evaluation Conference",
+    month = may,
+    year = "2026",
+    address = "Palma, Mallorca, Spain",
+    publisher = "European Language Resources Association (ELRA)",
+    url = "https://github.com/nils-hellwig/ABSA-annotation-tool",
+}
 ```
 
 ---
