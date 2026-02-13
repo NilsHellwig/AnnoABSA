@@ -6,7 +6,7 @@
 
 Accepted at **LREC 2026** (15th edition) · Palma, Mallorca (Spain)
 
-[![Paper Download](https://img.shields.io/badge/Paper-LREC%202026-blue?style=for-the-badge&logo=googlescholar)](TBA)
+[![Paper](https://img.shields.io/badge/Paper_Download-LREC%202026-blue?style=for-the-badge&logo=googlescholar)](TBA)
 [![Correspondence](https://img.shields.io/badge/Contact-Nils%20Hellwig-darkred?style=for-the-badge&logo=minutemailer)](mailto:nils-constantin.hellwig@ur.de)
 
 ---
@@ -16,7 +16,7 @@ Accepted at **LREC 2026** (15th edition) · Palma, Mallorca (Spain)
 ¹Media Informatics Group, University of Regensburg, Germany  
 ²Information Science Group, University of Regensburg, Germany
 
-*✉ Correspondence to: [nils-constantin.hellwig@ur.de](mailto:nils-constantin.hellwig@ur.de)*  
+_✉ Correspondence to: [nils-constantin.hellwig@ur.de](mailto:nils-constantin.hellwig@ur.de)_  
 `{nils-constantin.hellwig, jakob.fehle, udo.kruschwitz, christian.wolff}@ur.de`
 
 ---
@@ -87,6 +87,7 @@ This tool helps you **annotate text data for Aspect-Based Sentiment Analysis (AB
 ## 📊 Analytics Features
 
 ### Timing Data Collection
+
 - **Optional timing tracking** - Enable with `--store-time` flag to collect annotation performance metrics
 - **Duration measurement** - Records time spent on each annotation from viewing to saving
 - **Change detection** - Tracks whether annotations were modified during the session
@@ -99,32 +100,38 @@ This tool helps you **annotate text data for Aspect-Based Sentiment Analysis (AB
 The tool includes optional AI assistance for automated annotation suggestions using Large Language Models (LLMs). You can choose between **local processing** with Ollama or **cloud-based** processing with OpenAI:
 
 ### Local AI with Ollama (Privacy-Focused)
+
 All processing happens locally on your machine via the Ollama API, ensuring complete data privacy. Enable with the `--ai-suggestions` CLI flag. Requires [Ollama](https://ollama.com/) installed and a compatible model (e.g., Gemma 3:4B) downloaded.
 
-### Cloud AI with OpenAI (Advanced Models)  
+### Cloud AI with OpenAI (Advanced Models)
+
 Use OpenAI's advanced language models (like GPT-4o) by providing your API key with `--openai-key your-api-key`. This option provides more sophisticated predictions but sends data to OpenAI's servers.
 
 **Example usage:**
+
 ```bash
 # Local AI with Ollama
 annoabsa data.csv --ai-suggestions --llm-model gemma3:4b
 
-# Cloud AI with OpenAI  
+# Cloud AI with OpenAI
 annoabsa data.csv --ai-suggestions --openai-key sk-your-api-key --llm-model gpt-4o-2024-08-06
 ```
 
 ### Manual vs Automatic AI Prediction
 
 By default, when `--ai-suggestions` is enabled, the AI automatically triggers predictions when:
+
 - Navigating to a new annotation that hasn't been annotated yet
 - The current item has no existing annotations
 
 If you prefer manual control, use the `--disable-ai-automatic-prediction` flag in combination with `--ai-suggestions`. This keeps the AI button functional for manual triggering while disabling automatic predictions.
 
 ### Similarity Matching
+
 For finding relevant examples to provide context to the LLM, the tool uses **BM25** (Robertson and Zaragoza 2009), a sparse retrieval function that calculates relevance scores between sentences based on term frequency (TF), inverse document frequency (IDF), and sentence length. This provides efficient keyword-based retrieval that identifies sentences sharing common keywords.
 
 ### How It Works
+
 3. **UI Integration** - Click the ✨ AI button next to "Text to annotate" to get suggestions
 1. **Few-Shot Learning** - The AI analyzes existing annotations in your dataset
 
@@ -135,12 +142,14 @@ For finding relevant examples to provide context to the LLM, the tool uses **BM2
 You can display PDF guidelines directly in the annotation interface to ensure consistent annotation standards across annotators. Use the `--annotation-guideline <path/to/guidelines.pdf>` flag to specify a PDF file containing annotation instructions, examples, or coding guidelines.
 
 ### Features
+
 - **Collapsible Card** - Guidelines are displayed in a collapsible card between the text and annotation form
 - **Embedded PDF Viewer** - PDF is displayed directly in the interface using an iframe
 - **Always Available** - Guidelines remain accessible throughout the annotation session
 - **Standard Compliance** - Helps maintain consistent annotation quality and standards
 
 ### Usage
+
 ```bash
 ./annoabsa examples/restaurant_reviews.json --annotation-guideline docs/annotation_guidelines.pdf
 ```
@@ -150,6 +159,7 @@ You can display PDF guidelines directly in the annotation interface to ensure co
 ## 🚀 Quick Start
 
 ### Installation
+
 ```bash
 # Install Python dependencies
 pip install -r requirements.txt
@@ -159,6 +169,7 @@ cd frontend && npm install && cd ..
 ```
 
 ### Basic Usage
+
 ```bash
 # Start with example data
 ./annoabsa examples/restaurant_reviews.csv
@@ -172,6 +183,7 @@ cd frontend && npm install && cd ..
 ```
 
 ### Manual Setup (Alternative)
+
 ```bash
 # Backend
 pip install fastapi uvicorn pandas rank-bm25
@@ -189,11 +201,11 @@ The app will open at `http://localhost:3000`
 
 The `examples/` folder contains sample data to get you started:
 
-| File | Format | Description |
-|------|--------|-------------|
-| `restaurant_reviews.csv` | CSV | 10 restaurant reviews in CSV format with English text and German translations |
-| `restaurant_reviews.json` | JSON | Same reviews in JSON format with additional metadata |
-| `example_config.json` | JSON | Example configuration file with restaurant domain settings |
+| File                      | Format | Description                                                                   |
+| ------------------------- | ------ | ----------------------------------------------------------------------------- |
+| `restaurant_reviews.csv`  | CSV    | 10 restaurant reviews in CSV format with English text and German translations |
+| `restaurant_reviews.json` | JSON   | Same reviews in JSON format with additional metadata                          |
+| `example_config.json`     | JSON   | Example configuration file with restaurant domain settings                    |
 
 ---
 
@@ -228,35 +240,35 @@ Save and reuse configurations with JSON files:
 
 ### CLI Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--backend` | Start only backend server | - |
-| `--backend-port` | Backend server port | `8000` |
-| `--frontend-port` | Frontend server port | `3000` |  
-| `--backend-ip` | Backend server IP address | `127.0.0.1` |
-| `--frontend-ip` | Frontend server IP address | `127.0.0.1` |
-| `--session-id` | Session identifier for annotation tracking | `None` |
-| `--elements` | Sentiment elements to annotate | `aspect_term, aspect_category, sentiment_polarity, opinion_term` |
-| `--polarities` | Available sentiment polarities | `positive, negative, neutral` |
-| `--categories` | Available aspect categories | Restaurant domain (13 categories) |
-| `--implicit-aspect` | Allow implicit aspect terms | `True` |
-| `--disable-implicit-aspect` | Disable implicit aspect terms | - |
-| `--implicit-opinion` | Allow implicit opinion terms | `False` |
-| `--disable_implicit_opinion` | Disable implicit opinion terms | `True` (default) |
-| `--disable_clean_phrases` | Disable automatic punctuation cleaning from phrase start/end | Enabled by default |
-| `--disable-save-positions` | Disable saving phrase positions (at_start, at_end, ot_start, ot_end) for faster processing | Enabled by default |
-| `--disable-click-on-token` | Disable click-on-token feature (precise character clicking instead of token snapping) | Enabled by default |
-| `--auto-positions` | Enable automatic position filling** on startup for existing phrases without positions | Disabled by default |
-| `--store-time` | Store timing data for annotation sessions (duration and change detection) | Disabled by default |
-| `--display-avg-annotation-time` | Display average annotation time in the interface (requires timing data) | Disabled by default |
-| `--ai-suggestions` | Enable AI-powered prediction for automated annotation suggestions using LLM | Disabled by default |
-| `--disable-ai-automatic-prediction` | Disable automatic AI prediction triggering (AI button still works manually) | Disabled by default |
-| `--annotation-guideline` | Path to PDF file containing annotation guidelines to display in the UI | Disabled by default |
-| `--llm-model` | Language model for predictions (e.g., gemma3:4b for Ollama, gpt-4o-2024-08-06 for OpenAI) | `gemma-3:4b` |
-| `--openai-key` | OpenAI API key for using OpenAI models instead of local LLM | None |
-| `--n-few-shot` | Maximum number of few-shot examples to include in LLM prompts | `10` |
-| `--save-config` | Save config to JSON file | - |
-| `--load-config` | Load config from JSON file | - |
+| Option                              | Description                                                                                | Default                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| `--backend`                         | Start only backend server                                                                  | -                                                                |
+| `--backend-port`                    | Backend server port                                                                        | `8000`                                                           |
+| `--frontend-port`                   | Frontend server port                                                                       | `3000`                                                           |
+| `--backend-ip`                      | Backend server IP address                                                                  | `127.0.0.1`                                                      |
+| `--frontend-ip`                     | Frontend server IP address                                                                 | `127.0.0.1`                                                      |
+| `--session-id`                      | Session identifier for annotation tracking                                                 | `None`                                                           |
+| `--elements`                        | Sentiment elements to annotate                                                             | `aspect_term, aspect_category, sentiment_polarity, opinion_term` |
+| `--polarities`                      | Available sentiment polarities                                                             | `positive, negative, neutral`                                    |
+| `--categories`                      | Available aspect categories                                                                | Restaurant domain (13 categories)                                |
+| `--implicit-aspect`                 | Allow implicit aspect terms                                                                | `True`                                                           |
+| `--disable-implicit-aspect`         | Disable implicit aspect terms                                                              | -                                                                |
+| `--implicit-opinion`                | Allow implicit opinion terms                                                               | `False`                                                          |
+| `--disable_implicit_opinion`        | Disable implicit opinion terms                                                             | `True` (default)                                                 |
+| `--disable_clean_phrases`           | Disable automatic punctuation cleaning from phrase start/end                               | Enabled by default                                               |
+| `--disable-save-positions`          | Disable saving phrase positions (at_start, at_end, ot_start, ot_end) for faster processing | Enabled by default                                               |
+| `--disable-click-on-token`          | Disable click-on-token feature (precise character clicking instead of token snapping)      | Enabled by default                                               |
+| `--auto-positions`                  | Enable automatic position filling\*\* on startup for existing phrases without positions    | Disabled by default                                              |
+| `--store-time`                      | Store timing data for annotation sessions (duration and change detection)                  | Disabled by default                                              |
+| `--display-avg-annotation-time`     | Display average annotation time in the interface (requires timing data)                    | Disabled by default                                              |
+| `--ai-suggestions`                  | Enable AI-powered prediction for automated annotation suggestions using LLM                | Disabled by default                                              |
+| `--disable-ai-automatic-prediction` | Disable automatic AI prediction triggering (AI button still works manually)                | Disabled by default                                              |
+| `--annotation-guideline`            | Path to PDF file containing annotation guidelines to display in the UI                     | Disabled by default                                              |
+| `--llm-model`                       | Language model for predictions (e.g., gemma3:4b for Ollama, gpt-4o-2024-08-06 for OpenAI)  | `gemma-3:4b`                                                     |
+| `--openai-key`                      | OpenAI API key for using OpenAI models instead of local LLM                                | None                                                             |
+| `--n-few-shot`                      | Maximum number of few-shot examples to include in LLM prompts                              | `10`                                                             |
+| `--save-config`                     | Save config to JSON file                                                                   | -                                                                |
+| `--load-config`                     | Load config from JSON file                                                                 | -                                                                |
 
 ---
 
@@ -265,15 +277,17 @@ Save and reuse configurations with JSON files:
 The tool supports both **CSV** and **JSON** formats with UTF-8 encoding:
 
 ### CSV Format
+
 Your CSV file should contain at least these columns:
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `text` | string | Text to be annotated |
-| `label` | string | JSON array of annotations (auto-generated) |
-| `translation` | string | **Optional:** Translation of the text |
+| Column        | Type   | Description                                |
+| ------------- | ------ | ------------------------------------------ |
+| `text`        | string | Text to be annotated                       |
+| `label`       | string | JSON array of annotations (auto-generated) |
+| `translation` | string | **Optional:** Translation of the text      |
 
 **Example CSV** (with UTF-8 encoding):
+
 ```csv
 text,translation,label
 "The food was amazing but service was slow.","Das Essen war fantastisch, aber der Service war langsam.",""
@@ -282,9 +296,11 @@ text,translation,label
 ```
 
 ### JSON Format
+
 Alternative JSON structure for more flexibility:
 
 **Example JSON** (`examples/restaurant_reviews.json`):
+
 ```json
 [
   {
@@ -293,7 +309,7 @@ Alternative JSON structure for more flexibility:
     "label": [
       {
         "aspect_term": "food",
-        "aspect_category": "food quality", 
+        "aspect_category": "food quality",
         "sentiment_polarity": "positive",
         "opinion_term": "amazing",
         "at_start": 4,
@@ -304,7 +320,7 @@ Alternative JSON structure for more flexibility:
       {
         "aspect_term": "service",
         "aspect_category": "service general",
-        "sentiment_polarity": "negative", 
+        "sentiment_polarity": "negative",
         "opinion_term": "slow",
         "at_start": 25,
         "at_end": 31,
@@ -325,8 +341,9 @@ Alternative JSON structure for more flexibility:
 ```
 
 **Key States:**
+
 - **Not annotated**: No `label` key present
-- **No aspects found**: `label` is an empty array `[]`  
+- **No aspects found**: `label` is an empty array `[]`
 - **Aspects found**: `label` contains annotation objects
 
 ### Timing Data (Optional)
@@ -346,6 +363,7 @@ When timing data collection is enabled with `--store-time`, the tool adds timing
 ```
 
 **Timing Fields:**
+
 - **duration**: Time spent in seconds from viewing the text to saving annotations
 - **change**: Whether the annotation was modified (`true`) or left unchanged (`false`)
 - **Multiple entries**: Each annotation session appends a new timing entry, supporting re-annotation analysis
@@ -360,6 +378,7 @@ When both timing data collection and average time display are enabled, the inter
 ```
 
 This displays the average annotation time between the dark mode toggle and index input field. The statistic is calculated by:
+
 1. Collecting all `duration` values from all examples that have timing data
 2. Computing the average across all annotation sessions
 3. Displaying the result as "Ø {time}s per annotation" in the interface
@@ -370,12 +389,12 @@ The average time helps researchers understand annotation efficiency and can guid
 
 When phrase position saving is enabled (default), the tool automatically adds character position information:
 
-| Field | Description |
-|-------|-------------|
-| `at_start` | Start character position of aspect term in text |
-| `at_end` | End character position of aspect term in text |  
+| Field      | Description                                      |
+| ---------- | ------------------------------------------------ |
+| `at_start` | Start character position of aspect term in text  |
+| `at_end`   | End character position of aspect term in text    |
 | `ot_start` | Start character position of opinion term in text |
-| `ot_end` | End character position of opinion term in text |
+| `ot_end`   | End character position of opinion term in text   |
 
 Position indices are 0-based and inclusive. This data is useful for downstream processing and analysis.
 
@@ -388,6 +407,7 @@ Position indices are 0-based and inclusive. This data is useful for downstream p
 - Migrating between different annotation formats
 
 **Example**: If your data contains annotations like this:
+
 ```json
 {
   "text": "The pasta was excellent",
@@ -401,9 +421,10 @@ Position indices are 0-based and inclusive. This data is useful for downstream p
 ```
 
 The tool will automatically add position data on startup:
+
 ```json
 {
-  "text": "The pasta was excellent", 
+  "text": "The pasta was excellent",
   "label": [
     {
       "aspect_term": "pasta",
@@ -418,9 +439,10 @@ The tool will automatically add position data on startup:
 ```
 
 **Usage:**
+
 - **Default**: Auto-position filling is disabled
 - **Enable**: Use `--auto-positions` flag to enable this preprocessing step
-- **Algorithm**: Uses first occurrence of each phrase in the text 
+- **Algorithm**: Uses first occurrence of each phrase in the text
 
 **Important**: Position data is only saved when the corresponding term has an actual value (not NULL or empty). This ensures data consistency and prevents storing meaningless position information for implicit aspects/opinions.
 
@@ -429,13 +451,15 @@ To disable position saving entirely, use the `--disable-save-positions` CLI opti
 ### Automatic Phrase Cleaning
 
 By default, the tool automatically cleans selected phrases by:
+
 - Trimming whitespace from start and end
 - Removing common punctuation marks: `. , ; : ! ? ¡ ¿ " ' ` ´ ' ' " " „ « » ( ) [ ] { }`
 - Adjusting saved positions to match the cleaned phrase
 
 **Examples:**
+
 - `"amazing!"` → `amazing` (exclamation mark removed)
-- ` , great,  ` → `great` (whitespace and commas removed)
+- `, great, ` → `great` (whitespace and commas removed)
 - `(excellent)` → `excellent` (parentheses removed)
 
 This ensures consistent annotation quality and removes common annotation errors. To disable phrase cleaning, use the `--disable_clean_phrases` CLI option.
@@ -456,26 +480,32 @@ When available, translations are displayed below the original text in a blue-tin
 ## 🎨 Annotation Elements
 
 ### Available Elements
+
 - **`aspect_term`** - Specific aspect mentioned in text
-- **`aspect_category`** - General aspect category  
+- **`aspect_category`** - General aspect category
 - **`sentiment_polarity`** - Sentiment towards aspect
 - **`opinion_term`** - Opinion expression about aspect
 
 ### UI Layout
+
 The annotation interface displays fields in this order for optimal workflow:
+
 1. **Aspect term** (phrase selection)
 2. **Opinion term** (phrase selection) - displayed next to aspect term
 3. **Aspect category** (dropdown)
 4. **Sentiment polarity** (dropdown)
 
 ### Combined Annotation Mode
+
 When both **Aspect term** and **Opinion term** are configured:
+
 - Clicking "Select phrase" on either field opens a combined popup
 - The popup shows two separate text areas for independent phrase selection
 - Both fields must be completed (either by phrase selection or marking as implicit) before proceeding
 - Each field has its own "Implicit" checkbox when implicit terms are allowed
 
 ### Default Categories (Restaurant Domain)
+
 Food, Service, Price, Ambience, Location, Restaurant
 
 ---
