@@ -1,6 +1,35 @@
-# 🎯 AnnoABSA: Annotation Tool for Aspect-based Sentiment Analysis
+# AnnoABSA: Annotation Tool for Aspect-based Sentiment Analysis
 
-> *A modern, intuitive web interface for Aspect-Based Sentiment Analysis annotation*
+<div align="center">
+
+**AnnoABSA: A Web-Based Annotation Tool for Aspect-Based Sentiment Analysis with Retrieval-Augmented Suggestions**
+
+Accepted at **LREC 2026** (15th edition) · Palma, Mallorca (Spain)
+
+[![Paper](https://img.shields.io/badge/Paper-LREC%202026-blue?style=for-the-badge&logo=googlescholar)](TBA)
+[![Model](https://img.shields.io/badge/Gemma--3--27B-FFAB00?style=for-the-badge&logo=googlegemini)](https://huggingface.co/google/gemma-3-27b-it)
+
+---
+
+**Nils Constantin Hellwig · Jakob Fehle · Udo Kruschwitz · Christian Wolff**
+
+University of Regensburg, Germany
+
+---
+
+</div>
+
+> **Abstract:** We introduce AnnoABSA, the first web-based annotation tool to support the full spectrum of Aspect-Based Sentiment Analysis (ABSA) tasks. The tool is highly customizable, enabling flexible configuration of sentiment elements and task-specific requirements. Alongside manual annotation, AnnoABSA provides optional Large Language Model (LLM)-based retrieval-augmented generation (RAG) suggestions that offer context-aware assistance while keeping the human annotator in control. To improve prediction quality over time, the system retrieves the ten most similar examples that are already annotated and adds them as few-shot examples in the prompt, ensuring that suggestions become increasingly accurate as the annotation process progresses. Released as open-source software under the MIT License, AnnoABSA is freely accessible and easily extendable for research and practical applications.
+
+---
+
+## 📜 Citation (TBA)
+
+```bibtex
+tba
+```
+
+---
 
 [![Made with React](https://img.shields.io/badge/Frontend-React-61dafb?style=flat-square&logo=react)](https://reactjs.org/)
 [![Built with TypeScript](https://img.shields.io/badge/Built_with-TypeScript-3178C6?style=flat-square&logo=typescript)](https://typescriptlang.org/)
