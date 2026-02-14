@@ -30,16 +30,7 @@ _✉ Correspondence to: [nils-constantin.hellwig@ur.de](mailto:nils-constantin.h
 ## 📜 Citation (TBA)
 
 ```bibtex
-@inproceedings{hellwig-etal-2026-annoabsa,
-    title = "{A}nno{ABSA}: A Web-Based Annotation Tool for Aspect-Based Sentiment Analysis with Retrieval-Augmented Suggestions",
-    author = "Hellwig, Nils Constantin and Fehle, Jakob and Kruschwitz, Udo and Wolff, Christian",
-    booktitle = "Proceedings of the 15th Language Resources and Evaluation Conference",
-    month = may,
-    year = "2026",
-    address = "Palma, Mallorca, Spain",
-    publisher = "European Language Resources Association (ELRA)",
-    url = "https://github.com/nils-hellwig/ABSA-annotation-tool",
-}
+tba
 ```
 
 ---
