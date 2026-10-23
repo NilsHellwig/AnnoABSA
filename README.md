@@ -6,7 +6,7 @@
 
 Accepted at **LREC 2026** (15th edition) · Palma, Mallorca (Spain)
 
-[![Paper](https://img.shields.io/badge/Paper_Download-LREC%202026-blue?style=for-the-badge&logo=googlescholar)](TBA)
+[![Paper](https://img.shields.io/badge/Paper_Download-LREC%202026-blue?style=for-the-badge&logo=googlescholar)](https://aclanthology.org/2026.lrec-1.634/)
 [![Correspondence](https://img.shields.io/badge/Contact-Nils%20Hellwig-darkred?style=for-the-badge&logo=minutemailer)](mailto:nils-constantin.hellwig@ur.de)
 
 ---
@@ -27,10 +27,31 @@ _✉ Correspondence to: [nils-constantin.hellwig@ur.de](mailto:nils-constantin.h
 
 ---
 
-## 📜 Citation (TBA)
+## 📜 Citation
 
 ```bibtex
-tba
+@inproceedings{hellwig-etal-2026-annoabsa,
+    title = "{A}nno{ABSA}: A Web-Based Annotation Tool for Aspect-Based Sentiment Analysis with Retrieval-Augmented Suggestions",
+    author = "Hellwig, Nils Constantin  and
+      Fehle, Jakob  and
+      Kruschwitz, Udo  and
+      Wolff, Christian",
+    editor = "Piperidis, Stelios  and
+      Bel, N{\'u}ria  and
+      van den Heuvel, Henk  and
+      Ide, Nancy  and
+      Krek, Simon  and
+      Toral, Antonio",
+    booktitle = "Proceedings of the Fifteenth Language Resources and Evaluation Conference",
+    month = may,
+    year = "2026",
+    address = "Palma de Mallorca, Spain",
+    publisher = "ELRA Language Resource Association",
+    url = "https://aclanthology.org/2026.lrec-1.634/",
+    doi = "10.63317/56mac6pxbke6",
+    pages = "7985--7998",
+    abstract = "We introduce AnnoABSA, the first web-based annotation tool to support the full spectrum of Aspect-Based Sentiment Analysis (ABSA) tasks. The tool is highly customizable, enabling flexible configuration of sentiment elements and task-specific requirements. Alongside manual annotation, AnnoABSA provides optional Large Language Model (LLM)-based retrieval-augmented generation (RAG) suggestions that offer context-aware assistance in a human-in-the-loop approach, keeping the human annotator in control. To improve prediction quality over time, the system retrieves the ten most similar examples that are already annotated and adds them as few-shot examples in the prompt, ensuring that suggestions become increasingly accurate as the annotation process progresses. Released as open-source software under the MIT License, AnnoABSA is freely accessible and easily extendable for research and practical applications."
+}
 ```
 
 ---
@@ -40,7 +61,7 @@ tba
 [![Made with Vite](https://img.shields.io/badge/Built_with-Vite-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)
 [![Styled with Tailwind CSS](https://img.shields.io/badge/Styled_with-Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Made with FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue?style=flat-square&logo=python)](https://python.org)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue?style=flat-square&logo=python)](https://python.org)
 
 ## 📖 What is this?
 
