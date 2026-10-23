@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface DarkModeToggleProps {
   isDark: boolean;
@@ -10,8 +10,8 @@ export const DarkModeToggle: React.FC<DarkModeToggleProps> = ({ isDark, onToggle
     <button
       onClick={onToggle}
       className="p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-      title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-      aria-label={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+      title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      aria-label={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
     >
       {isDark ? (
         // Sun icon for light mode

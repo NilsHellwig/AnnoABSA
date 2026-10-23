@@ -66,7 +66,7 @@ interface ImportMeta {
 }
 
 // Field types for forms
-export type FieldType = 'aspect_term' | 'opinion_term' | 'aspect_category' | 'sentiment_polarity';
+export type FieldType = "aspect_term" | "opinion_term" | "aspect_category" | "sentiment_polarity";
 
 // Position interface for text selection
 export interface TextPosition {

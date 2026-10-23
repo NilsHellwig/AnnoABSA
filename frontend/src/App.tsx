@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { getAnnotationColorClasses, createTextHighlights, renderHighlightedText, getUsedColorIndices, getColorByIndex } from "./phraseColoring";
+import {
+  getAnnotationColorClasses,
+  createTextHighlights,
+  renderHighlightedText,
+  getUsedColorIndices,
+  getColorByIndex,
+} from "./phraseColoring";
 import { AspectItem, NewAspect, FieldType, TextPosition, Settings } from "./types";
 import { useDarkMode } from "./hooks/useDarkMode";
 import { DarkModeToggle } from "./components/DarkModeToggle";
@@ -13,10 +19,10 @@ function App() {
   const [displayedTranslation, setDisplayedTranslation] = useState<string>("");
   const [consideredSentimentElements, setConsideredSentimentElements] = useState<string[]>([]);
   const [newAspect, setNewAspect] = useState<NewAspect>({
-    "aspect_term": "",
-    "aspect_category": "",
-    "sentiment_polarity": "",
-    "opinion_term": ""
+    aspect_term: "",
+    aspect_category: "",
+    sentiment_polarity: "",
+    opinion_term: "",
   });
   const [aspectList, setAspectList] = useState<AspectItem[]>([]);
 
@@ -67,9 +73,8 @@ function App() {
   const [currentAIPredictionIndex, setCurrentAIPredictionIndex] = useState<number | null>(null);
   const [aiTriggeredForIndex, setAiTriggeredForIndex] = useState<boolean>(false);
 
-
   // Get backend URL from environment or use default
-  const backendUrl = (import.meta as any).env?.VITE_BACKEND_URL || 'http://localhost:8000';
+  const backendUrl = (import.meta as any).env?.VITE_BACKEND_URL || "http://localhost:8000";
 
   // Function to mix colors mathematically
   // Helper functions
@@ -89,8 +94,8 @@ function App() {
     if (!storeTime) return;
     try {
       await fetch(`${backendUrl}/timing/${currentIndex}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ duration, change }),
       });
     } catch (e) {
@@ -139,12 +144,16 @@ function App() {
     let cleaned = phrase.trim();
     // Then remove common punctuation from start and end
     const punctuation = /^[.,;:!?¡¿"'`´''""„«»()[\]{}]+|[.,;:!?¡¿"'`´''""„«»()[\]{}]+$/g;
-    cleaned = cleaned.replace(punctuation, '');
+    cleaned = cleaned.replace(punctuation, "");
     // Trim again in case there were spaces after punctuation
     return cleaned.trim();
   };
 
-  const getCleanedPhrasePositions = (originalStart: number, originalEnd: number, originalText: string): { start: number; end: number } => {
+  const getCleanedPhrasePositions = (
+    originalStart: number,
+    originalEnd: number,
+    originalText: string,
+  ): { start: number; end: number } => {
     if (!autoCleanPhrases || originalStart === null || originalEnd === null) {
       return { start: originalStart, end: originalEnd };
     }
@@ -166,13 +175,13 @@ function App() {
 
     return {
       start: originalStart + cleanedIndex,
-      end: originalStart + cleanedIndex + cleanedPhrase.length - 1
+      end: originalStart + cleanedIndex + cleanedPhrase.length - 1,
     };
   };
 
   // Helper functions for character highlighting in popup
   const getAspectCharClass = (index: number): string => {
-    let classes = 'cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-700 text-gray-900 dark:text-gray-100';
+    let classes = "cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-700 text-gray-900 dark:text-gray-100";
 
     // Check if we have a selection and phrase cleaning is enabled
     if (aspectStartChar !== null && aspectEndChar !== null && autoCleanPhrases) {
@@ -180,24 +189,23 @@ function App() {
       // If cleaned phrase is different, only show the cleaned version
       if (cleanedPositions.start !== aspectStartChar || cleanedPositions.end !== aspectEndChar) {
         if (index >= cleanedPositions.start && index <= cleanedPositions.end) {
-          classes += ' bg-blue-300 dark:bg-blue-600 text-black dark:text-white';
+          classes += " bg-blue-300 dark:bg-blue-600 text-black dark:text-white";
         }
         return classes; // Return early, don't show original selection or markers
       }
     }
 
     // Fallback: show original selection with markers (when cleaning disabled or no difference)
-    if (aspectStartChar !== null && aspectEndChar !== null &&
-      index >= aspectStartChar && index <= aspectEndChar) {
-      classes += ' bg-blue-300 dark:bg-blue-600 text-black dark:text-white';
+    if (aspectStartChar !== null && aspectEndChar !== null && index >= aspectStartChar && index <= aspectEndChar) {
+      classes += " bg-blue-300 dark:bg-blue-600 text-black dark:text-white";
     }
 
     // Start/end markers (only when not in cleaned mode or no cleaning difference)
     if (!(aspectStartChar !== null && aspectEndChar !== null && autoCleanPhrases)) {
       if (aspectStartChar === index) {
-        classes += ' bg-green-300';
+        classes += " bg-green-300";
       } else if (aspectEndChar === index) {
-        classes += ' bg-red-300';
+        classes += " bg-red-300";
       }
     }
 
@@ -205,7 +213,7 @@ function App() {
   };
 
   const getOpinionCharClass = (index: number): string => {
-    let classes = 'cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-700 text-gray-900 dark:text-gray-100';
+    let classes = "cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-700 text-gray-900 dark:text-gray-100";
 
     // Check if we have a selection and phrase cleaning is enabled
     if (opinionStartChar !== null && opinionEndChar !== null && autoCleanPhrases) {
@@ -213,24 +221,23 @@ function App() {
       // If cleaned phrase is different, only show the cleaned version
       if (cleanedPositions.start !== opinionStartChar || cleanedPositions.end !== opinionEndChar) {
         if (index >= cleanedPositions.start && index <= cleanedPositions.end) {
-          classes += ' bg-blue-300 dark:bg-blue-600 text-black dark:text-white';
+          classes += " bg-blue-300 dark:bg-blue-600 text-black dark:text-white";
         }
         return classes; // Return early, don't show original selection or markers
       }
     }
 
-    // Fallback: show original selection with markers (when cleaning disabled or no difference)  
-    if (opinionStartChar !== null && opinionEndChar !== null &&
-      index >= opinionStartChar && index <= opinionEndChar) {
-      classes += ' bg-blue-300 dark:bg-blue-600 text-black dark:text-white';
+    // Fallback: show original selection with markers (when cleaning disabled or no difference)
+    if (opinionStartChar !== null && opinionEndChar !== null && index >= opinionStartChar && index <= opinionEndChar) {
+      classes += " bg-blue-300 dark:bg-blue-600 text-black dark:text-white";
     }
 
     // Start/end markers (only when not in cleaned mode or no cleaning difference)
     if (!(opinionStartChar !== null && opinionEndChar !== null && autoCleanPhrases)) {
       if (opinionStartChar === index) {
-        classes += ' bg-green-300';
+        classes += " bg-green-300";
       } else if (opinionEndChar === index) {
-        classes += ' bg-red-300';
+        classes += " bg-red-300";
       }
     }
 
@@ -238,7 +245,7 @@ function App() {
   };
 
   const getSingleFieldCharClass = (index: number): string => {
-    let classes = 'cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-700 text-gray-900 dark:text-gray-100';
+    let classes = "cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-700 text-gray-900 dark:text-gray-100";
 
     // Check if we have a selection and phrase cleaning is enabled
     if (selectedStartChar !== null && selectedEndChar !== null && autoCleanPhrases) {
@@ -246,24 +253,28 @@ function App() {
       // If cleaned phrase is different, only show the cleaned version
       if (cleanedPositions.start !== selectedStartChar || cleanedPositions.end !== selectedEndChar) {
         if (index >= cleanedPositions.start && index <= cleanedPositions.end) {
-          classes += ' bg-blue-300 dark:bg-blue-600 text-black dark:text-white';
+          classes += " bg-blue-300 dark:bg-blue-600 text-black dark:text-white";
         }
         return classes; // Return early, don't show original selection or markers
       }
     }
 
     // Fallback: show original selection with markers (when cleaning disabled or no difference)
-    if (selectedStartChar !== null && selectedEndChar !== null &&
-      index >= selectedStartChar && index <= selectedEndChar) {
-      classes += ' bg-blue-300 dark:bg-blue-600 text-black dark:text-white';
+    if (
+      selectedStartChar !== null &&
+      selectedEndChar !== null &&
+      index >= selectedStartChar &&
+      index <= selectedEndChar
+    ) {
+      classes += " bg-blue-300 dark:bg-blue-600 text-black dark:text-white";
     }
 
     // Start/end markers (only when not in cleaned mode or no cleaning difference)
     if (!(selectedStartChar !== null && selectedEndChar !== null && autoCleanPhrases)) {
       if (selectedStartChar === index) {
-        classes += ' bg-green-300';
+        classes += " bg-green-300";
       } else if (selectedEndChar === index) {
-        classes += ' bg-red-300';
+        classes += " bg-red-300";
       }
     }
 
@@ -279,7 +290,7 @@ function App() {
     if (index !== -1) {
       return {
         startChar: index,
-        endChar: index + searchText.length - 1
+        endChar: index + searchText.length - 1,
       };
     }
     return { startChar: null, endChar: null };
@@ -291,7 +302,8 @@ function App() {
     setShowPhrasePopup(true);
 
     // Check if we're in combined mode
-    const showCombined = consideredSentimentElements.includes("aspect_term") && consideredSentimentElements.includes("opinion_term");
+    const showCombined =
+      consideredSentimentElements.includes("aspect_term") && consideredSentimentElements.includes("opinion_term");
 
     if (showCombined) {
       // For combined popup, pre-select current values if they exist
@@ -325,7 +337,6 @@ function App() {
       // Clear single selection states
       setSelectedStartChar(null);
       setSelectedEndChar(null);
-
     } else {
       // Single field mode, pre-select current value if it exists
       const currentValue = newAspect[fieldType] || "";
@@ -360,7 +371,8 @@ function App() {
     setShowPhrasePopup(true);
 
     // Check if we're in combined mode
-    const showCombined = consideredSentimentElements.includes("aspect_term") && consideredSentimentElements.includes("opinion_term");
+    const showCombined =
+      consideredSentimentElements.includes("aspect_term") && consideredSentimentElements.includes("opinion_term");
 
     if (showCombined) {
       // For combined editing, get both current values
@@ -395,7 +407,6 @@ function App() {
       // Clear single selection states
       setSelectedStartChar(null);
       setSelectedEndChar(null);
-
     } else {
       // Single field editing
       if (fieldType === "aspect_term") {
@@ -528,7 +539,8 @@ function App() {
 
   const savePhraseSelection = () => {
     // Check if we're showing both fields (combined mode)
-    const showCombined = consideredSentimentElements.includes("aspect_term") && consideredSentimentElements.includes("opinion_term");
+    const showCombined =
+      consideredSentimentElements.includes("aspect_term") && consideredSentimentElements.includes("opinion_term");
 
     if (showCombined) {
       // Handle both aspect term and opinion term
@@ -553,7 +565,8 @@ function App() {
       if (currentEditingIndex !== null) {
         // Editing existing annotation
         if (aspectPhrase !== undefined) {
-          let aspectStart = null, aspectEnd = null;
+          let aspectStart = null,
+            aspectEnd = null;
           if (!isImplicitAspect && aspectStartChar !== null && aspectEndChar !== null) {
             const cleanedPositions = getCleanedPhrasePositions(aspectStartChar, aspectEndChar, displayedText);
             aspectStart = cleanedPositions.start;
@@ -562,7 +575,8 @@ function App() {
           updateAspectItem(currentEditingIndex, "aspect_term", aspectPhrase, aspectStart, aspectEnd);
         }
         if (opinionPhrase !== undefined) {
-          let opinionStart = null, opinionEnd = null;
+          let opinionStart = null,
+            opinionEnd = null;
           if (!isImplicitOpinion && opinionStartChar !== null && opinionEndChar !== null) {
             const cleanedPositions = getCleanedPhrasePositions(opinionStartChar, opinionEndChar, displayedText);
             opinionStart = cleanedPositions.start;
@@ -594,8 +608,10 @@ function App() {
     } else {
       // Handle single field (original behavior)
       let selectedPhrase;
-      if ((currentEditingField === "aspect_term" && isImplicitAspect) ||
-        (currentEditingField === "opinion_term" && isImplicitOpinion)) {
+      if (
+        (currentEditingField === "aspect_term" && isImplicitAspect) ||
+        (currentEditingField === "opinion_term" && isImplicitOpinion)
+      ) {
         selectedPhrase = "NULL";
       } else if (selectedStartChar !== null && selectedEndChar !== null) {
         selectedPhrase = cleanPhrase(displayedText.substring(selectedStartChar, selectedEndChar + 1));
@@ -603,9 +619,11 @@ function App() {
 
       if (currentEditingIndex !== null) {
         // Editing existing annotation
-        const isImplicit = (currentEditingField === "aspect_term" && isImplicitAspect) ||
+        const isImplicit =
+          (currentEditingField === "aspect_term" && isImplicitAspect) ||
           (currentEditingField === "opinion_term" && isImplicitOpinion);
-        let startPos = null, endPos = null;
+        let startPos = null,
+          endPos = null;
         if (!isImplicit && selectedStartChar !== null && selectedEndChar !== null) {
           const cleanedPositions = getCleanedPhrasePositions(selectedStartChar, selectedEndChar, displayedText);
           startPos = cleanedPositions.start;
@@ -616,7 +634,8 @@ function App() {
         // Adding new annotation
         const updates: any = { [currentEditingField!]: selectedPhrase };
         if (savePhrasePositions && selectedStartChar !== null && selectedEndChar !== null) {
-          const isImplicit = (currentEditingField === "aspect_term" && isImplicitAspect) ||
+          const isImplicit =
+            (currentEditingField === "aspect_term" && isImplicitAspect) ||
             (currentEditingField === "opinion_term" && isImplicitOpinion);
           if (!isImplicit) {
             const cleanedPositions = getCleanedPhrasePositions(selectedStartChar, selectedEndChar, displayedText);
@@ -637,12 +656,18 @@ function App() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       savePhraseSelection();
     }
   };
 
-  const updateAspectItem = (index: number | null, field: keyof AspectItem, value: string | number, startPos: number | null = null, endPos: number | null = null): void => {
+  const updateAspectItem = (
+    index: number | null,
+    field: keyof AspectItem,
+    value: string | number,
+    startPos: number | null = null,
+    endPos: number | null = null,
+  ): void => {
     const updatedList = [...aspectList];
     (updatedList[index] as any)[field] = value;
 
@@ -684,7 +709,7 @@ function App() {
 
   const isFieldValid = (fieldName: keyof NewAspect): boolean => {
     const value = newAspect[fieldName];
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       return value && value.trim() !== "";
     }
     return false;
@@ -692,36 +717,40 @@ function App() {
 
   const addAnnotation = (): void => {
     // Check if all considered elements are filled
-    const isValid = consideredSentimentElements.every(element => {
+    const isValid = consideredSentimentElements.every((element) => {
       const value = (newAspect as any)[element];
-      return value && typeof value === 'string' && value.trim() !== "";
+      return value && typeof value === "string" && value.trim() !== "";
     });
 
     if (isValid) {
       // Create new annotation with only the considered elements
       const newAnnotation: any = {};
-      consideredSentimentElements.forEach(element => {
+      consideredSentimentElements.forEach((element) => {
         newAnnotation[element] = (newAspect as any)[element];
       });
 
       // Add position data if enabled, available, and the corresponding term is not NULL
       if (savePhrasePositions) {
         // Only add aspect position data if aspect_term exists and is not NULL or empty
-        if (newAspect.aspect_term &&
+        if (
+          newAspect.aspect_term &&
           newAspect.aspect_term !== "NULL" &&
           newAspect.aspect_term.trim() !== "" &&
           newAspect.at_start !== undefined &&
-          newAspect.at_end !== undefined) {
+          newAspect.at_end !== undefined
+        ) {
           newAnnotation.at_start = newAspect.at_start;
           newAnnotation.at_end = newAspect.at_end;
         }
 
         // Only add opinion position data if opinion_term exists and is not NULL or empty
-        if (newAspect.opinion_term &&
+        if (
+          newAspect.opinion_term &&
           newAspect.opinion_term !== "NULL" &&
           newAspect.opinion_term.trim() !== "" &&
           newAspect.ot_start !== undefined &&
-          newAspect.ot_end !== undefined) {
+          newAspect.ot_end !== undefined
+        ) {
           newAnnotation.ot_start = newAspect.ot_start;
           newAnnotation.ot_end = newAspect.ot_end;
         }
@@ -736,7 +765,7 @@ function App() {
 
       // Reset the form
       const resetAspect: any = {};
-      consideredSentimentElements.forEach(element => {
+      consideredSentimentElements.forEach((element) => {
         resetAspect[element] = "";
       });
       // Also reset position data
@@ -750,22 +779,22 @@ function App() {
 
   // A tuple in the "new annotation" form is only kept after clicking "Add aspect"
   const hasStartedNewAspect = (): boolean =>
-    consideredSentimentElements.some(element => {
+    consideredSentimentElements.some((element) => {
       const value = (newAspect as any)[element];
-      return typeof value === 'string' && value.trim() !== "";
+      return typeof value === "string" && value.trim() !== "";
     });
 
   const confirmDiscardNewAspect = (): boolean =>
     !hasStartedNewAspect() ||
     window.confirm(
-      "The annotation you started in the form has not been added (click \"Add aspect\" to keep it) " +
-      "and will be discarded. Continue anyway?"
+      'The annotation you started in the form has not been added (click "Add aspect" to keep it) ' +
+        "and will be discarded. Continue anyway?",
     );
 
   const getErrorDetail = async (response: Response): Promise<string> => {
     try {
       const body = await response.json();
-      return typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail);
+      return typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
     } catch (e) {
       return `${response.status} ${response.statusText}`;
     }
@@ -807,7 +836,7 @@ function App() {
 
       return settings["current_index"];
     } catch (error) {
-      console.error('Error fetching settings:', error);
+      console.error("Error fetching settings:", error);
       setBackendError(`Cannot reach the backend at ${backendUrl}`);
       return undefined;
     }
@@ -819,7 +848,7 @@ function App() {
       const data = await response.json();
       setAvgAnnotationTime(data.avg_annotation_time || 0);
     } catch (error) {
-      console.error('Error fetching average annotation time:', error);
+      console.error("Error fetching average annotation time:", error);
       setAvgAnnotationTime(0);
     }
   };
@@ -828,7 +857,7 @@ function App() {
   const fetchData = async (index: number): Promise<void> => {
     // Abort any ongoing AI prediction when changing index
     abortAIPrediction();
-    
+
     setIsLoadingData(true);
     try {
       const response = await fetch(`${backendUrl}/data/${index}`);
@@ -875,14 +904,13 @@ function App() {
       // Reset form - use current consideredSentimentElements or wait for it to be loaded
       const resetAspect: any = {};
       if (consideredSentimentElements.length > 0) {
-        consideredSentimentElements.forEach(element => {
+        consideredSentimentElements.forEach((element) => {
           resetAspect[element] = "";
         });
         setNewAspect(resetAspect);
       }
-
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error("Error fetching data:", error);
     } finally {
       setIsLoadingData(false);
     }
@@ -900,7 +928,7 @@ function App() {
     try {
       setIsAIPredicting(true);
       const response = await fetch(`${backendUrl}/ai_prediction/${currentIndex}`, {
-        signal: controller.signal
+        signal: controller.signal,
       });
       const predictions = await response.json();
 
@@ -912,7 +940,7 @@ function App() {
             aspect_category: aspect.aspect_category || "",
             sentiment_polarity: aspect.sentiment_polarity || "",
             opinion_term: aspect.opinion_term || "",
-            isLLMGenerated: true // Mark as LLM-generated
+            isLLMGenerated: true, // Mark as LLM-generated
           };
 
           if (aspect.at_start !== undefined && aspect.at_start !== null) {
@@ -936,7 +964,10 @@ function App() {
         const usedColors = getUsedColorIndices(aspectList);
         aiAnnotations.forEach((annotation) => {
           if (!isDuplicateAnnotation(annotation, aspectList)) {
-            const { colorEntry, colorIndex } = getAnnotationColorClasses(aspectList.length + nonDuplicateAIAnnotations.length, usedColors);
+            const { colorEntry, colorIndex } = getAnnotationColorClasses(
+              aspectList.length + nonDuplicateAIAnnotations.length,
+              usedColors,
+            );
             annotation.colorIndex = colorIndex;
             usedColors.add(colorIndex);
             nonDuplicateAIAnnotations.push(annotation);
@@ -949,10 +980,10 @@ function App() {
         }
       }
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('AI prediction was aborted');
+      if (error instanceof Error && error.name === "AbortError") {
+        console.log("AI prediction was aborted");
       } else {
-        console.error('Error fetching AI prediction:', error);
+        console.error("Error fetching AI prediction:", error);
       }
     } finally {
       setIsAIPredicting(false);
@@ -984,19 +1015,19 @@ function App() {
 
     try {
       // Remove colorIndex from annotations before sending to backend
-      const annotationsForBackend = annotations.map(annotation => {
+      const annotationsForBackend = annotations.map((annotation) => {
         const { colorIndex, ...annotationWithoutColor } = annotation;
         return annotationWithoutColor;
       });
 
       const response = await fetch(`${backendUrl}/annotations/${currentIndex}`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           name: "annotations",
-          value: annotationsForBackend
+          value: annotationsForBackend,
         }),
       });
 
@@ -1006,7 +1037,7 @@ function App() {
       }
       setBackendError(`Saving failed: ${await getErrorDetail(response)}`);
     } catch (error) {
-      console.error('Error saving annotations:', error);
+      console.error("Error saving annotations:", error);
       setBackendError(`Saving failed: cannot reach the backend at ${backendUrl}`);
     }
     return false;
@@ -1093,7 +1124,7 @@ function App() {
   useEffect(() => {
     if (consideredSentimentElements.length > 0) {
       const resetAspect: any = {};
-      consideredSentimentElements.forEach(element => {
+      consideredSentimentElements.forEach((element) => {
         resetAspect[element] = "";
       });
       setNewAspect(resetAspect);
@@ -1111,7 +1142,8 @@ function App() {
       enablePrePrediction &&
       !disableAiAutomaticPrediction && // Only if automatic prediction is not disabled
       currentIndex >= settingsCurrentIndex &&
-      !isAIPredicting && aspectList.length === 0 &&
+      !isAIPredicting &&
+      aspectList.length === 0 &&
       !aiTriggeredForIndex; // Only trigger if AI hasn't been triggered for this index yet
 
     if (shouldTriggerAIPrediction) {
@@ -1187,10 +1219,10 @@ function App() {
   };
 
   const isDuplicateAnnotation = (newAnnotation: AspectItem, existingAnnotations: AspectItem[]): boolean => {
-    return existingAnnotations.some(existing => {
+    return existingAnnotations.some((existing) => {
       // Compare all considered sentiment elements
       const elementsToCompare = consideredSentimentElements;
-      return elementsToCompare.every(element => {
+      return elementsToCompare.every((element) => {
         const newValue = (newAnnotation as any)[element];
         const existingValue = (existing as any)[element];
         return newValue === existingValue;
@@ -1205,12 +1237,19 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 data-testid="app-title" className="text-2xl font-bold text-gray-900 dark:text-white">AnnoABSA</h1>
+              <h1 data-testid="app-title" className="text-2xl font-bold text-gray-900 dark:text-white">
+                AnnoABSA
+              </h1>
               {version && (
-                <span data-testid="app-version" className="ml-2 text-xs text-gray-500 dark:text-gray-400">v{version}</span>
+                <span data-testid="app-version" className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                  v{version}
+                </span>
               )}
               {sessionId && (
-                <span data-testid="session-id" className="ml-4 px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm rounded-md">
+                <span
+                  data-testid="session-id"
+                  className="ml-4 px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm rounded-md"
+                >
                   Session: {sessionId}
                 </span>
               )}
@@ -1238,7 +1277,12 @@ function App() {
                 <button
                   data-testid="goto-index-button"
                   onClick={goToIndex}
-                  disabled={parseInt(inputIndex) > totalCount || parseInt(inputIndex) < 1 || isNaN(parseInt(inputIndex)) === true || isLoadingData}
+                  disabled={
+                    parseInt(inputIndex) > totalCount ||
+                    parseInt(inputIndex) < 1 ||
+                    isNaN(parseInt(inputIndex)) === true ||
+                    isLoadingData
+                  }
                   className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-sm disabled:cursor-not-allowed"
                 >
                   Go to
@@ -1288,9 +1332,10 @@ function App() {
                       // Timer resetten bei Navigation
                       resetTimer();
                       // If settingsCurrentIndex equals totalCount, go to totalCount - 1
-                      const targetIndex = settingsCurrentIndex >= totalCount && totalCount > 0
-                        ? settingsCurrentIndex - 1
-                        : settingsCurrentIndex;
+                      const targetIndex =
+                        settingsCurrentIndex >= totalCount && totalCount > 0
+                          ? settingsCurrentIndex - 1
+                          : settingsCurrentIndex;
                       setCurrentIndex(targetIndex);
                       await fetchData(targetIndex);
                       await fetchSettings(); // Update settings after navigation
@@ -1310,24 +1355,30 @@ function App() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
         {backendError && (
-          <div role="alert" data-testid="backend-error" className="mb-6 p-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm">
+          <div
+            role="alert"
+            data-testid="backend-error"
+            className="mb-6 p-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm"
+          >
             <strong className="font-semibold">Error:</strong> {backendError}
           </div>
         )}
 
         {/* Main Content Area */}
         <div className="lg:col-span-2 space-y-6">
-
-
           {/* Guidelines Card */}
           {annotationGuideline && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xs border dark:border-gray-700 p-6">
               <details className="group">
                 <summary className="flex justify-between items-center cursor-pointer list-none">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Guidelines</h2>
-                  <svg className="w-5 h-5 text-gray-500 dark:text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="w-5 h-5 text-gray-500 dark:text-gray-400 group-open:rotate-180 transition-transform"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </summary>
@@ -1359,13 +1410,16 @@ function App() {
                     </div>
                   ) : (
                     <div className="flex items-center flex-row gap-2">
-                      <span className="flex items-center gap-1 text-sm"><SparkleIcon size={16} weight="fill" /> AI</span>
+                      <span className="flex items-center gap-1 text-sm">
+                        <SparkleIcon size={16} weight="fill" /> AI
+                      </span>
                     </div>
                   )}
                 </button>
               )}
             </div>
-            <div className="text-xl text-center bg-gray-100 dark:bg-gray-700 p-4 rounded-xl leading-relaxed text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            <div
+              className="text-xl text-center bg-gray-100 dark:bg-gray-700 p-4 rounded-xl leading-relaxed text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               data-testid="annotation-text"
               onClick={handleTextClick}
               title="Click to add annotation"
@@ -1384,7 +1438,6 @@ function App() {
             )}
           </div>
 
-
           {/* Annotation Form */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xs border dark:border-gray-700 p-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Add aspect</h2>
@@ -1393,47 +1446,60 @@ function App() {
                 <div>
                   <label className="flex items-center text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Aspect term
-                    {isFieldValid("aspect_term") && <span className="text-blue-500 bg-blue-50 dark:bg-blue-900/50 rounded-full w-4 h-4 flex items-center justify-center ml-2 text-xs">✓</span>}
+                    {isFieldValid("aspect_term") && (
+                      <span className="text-blue-500 bg-blue-50 dark:bg-blue-900/50 rounded-full w-4 h-4 flex items-center justify-center ml-2 text-xs">
+                        ✓
+                      </span>
+                    )}
                   </label>
                   <div
                     className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100"
                     onClick={() => openPhrasePopup("aspect_term")}
                   >
-                    <div>
-                      {truncateText(newAspect.aspect_term) || "Select phrase"}
-                    </div>
-                    {newAspect.aspect_term && newAspect.aspect_term !== "NULL" && (() => {
-                      const cleanedPhrase = cleanPhrase(newAspect.aspect_term);
-                      return cleanedPhrase !== newAspect.aspect_term && (
-                        <div className="text-xs text-green-600 dark:text-green-400 mt-1">
-                          Cleaned: "{truncateText(cleanedPhrase)}"
-                        </div>
-                      );
-                    })()}
+                    <div>{truncateText(newAspect.aspect_term) || "Select phrase"}</div>
+                    {newAspect.aspect_term &&
+                      newAspect.aspect_term !== "NULL" &&
+                      (() => {
+                        const cleanedPhrase = cleanPhrase(newAspect.aspect_term);
+                        return (
+                          cleanedPhrase !== newAspect.aspect_term && (
+                            <div className="text-xs text-green-600 dark:text-green-400 mt-1">
+                              Cleaned: "{truncateText(cleanedPhrase)}"
+                            </div>
+                          )
+                        );
+                      })()}
                   </div>
-                </div>)}
+                </div>
+              )}
 
               {consideredSentimentElements.includes("opinion_term") && (
                 <div>
                   <label className="flex items-center text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Opinion term
-                    {isFieldValid("opinion_term") && <span className="text-blue-500 bg-blue-50 dark:bg-blue-900/50 rounded-full w-4 h-4 flex items-center justify-center ml-2 text-xs">✓</span>}
+                    {isFieldValid("opinion_term") && (
+                      <span className="text-blue-500 bg-blue-50 dark:bg-blue-900/50 rounded-full w-4 h-4 flex items-center justify-center ml-2 text-xs">
+                        ✓
+                      </span>
+                    )}
                   </label>
                   <div
                     className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100"
                     onClick={() => openPhrasePopup("opinion_term")}
                   >
-                    <div>
-                      {truncateText(newAspect.opinion_term) || "Select phrase"}
-                    </div>
-                    {newAspect.opinion_term && newAspect.opinion_term !== "NULL" && (() => {
-                      const cleanedPhrase = cleanPhrase(newAspect.opinion_term);
-                      return cleanedPhrase !== newAspect.opinion_term && (
-                        <div className="text-xs text-green-600 dark:text-green-400 mt-1">
-                          Cleaned: "{truncateText(cleanedPhrase)}"
-                        </div>
-                      );
-                    })()}
+                    <div>{truncateText(newAspect.opinion_term) || "Select phrase"}</div>
+                    {newAspect.opinion_term &&
+                      newAspect.opinion_term !== "NULL" &&
+                      (() => {
+                        const cleanedPhrase = cleanPhrase(newAspect.opinion_term);
+                        return (
+                          cleanedPhrase !== newAspect.opinion_term && (
+                            <div className="text-xs text-green-600 dark:text-green-400 mt-1">
+                              Cleaned: "{truncateText(cleanedPhrase)}"
+                            </div>
+                          )
+                        );
+                      })()}
                   </div>
                 </div>
               )}
@@ -1442,7 +1508,11 @@ function App() {
                 <div>
                   <label className="flex items-center text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Aspect category
-                    {isFieldValid("aspect_category") && <span className="text-blue-500 bg-blue-50 dark:bg-blue-900/50 rounded-full w-4 h-4 flex items-center justify-center ml-2 text-xs">✓</span>}
+                    {isFieldValid("aspect_category") && (
+                      <span className="text-blue-500 bg-blue-50 dark:bg-blue-900/50 rounded-full w-4 h-4 flex items-center justify-center ml-2 text-xs">
+                        ✓
+                      </span>
+                    )}
                   </label>
                   <select
                     data-testid="new-aspect-category"
@@ -1451,8 +1521,10 @@ function App() {
                     className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 cursor-pointer"
                   >
                     <option value="">Select aspect...</option>
-                    {validAspectCategories.map(aspect => (
-                      <option key={aspect} value={aspect}>{aspect}</option>
+                    {validAspectCategories.map((aspect) => (
+                      <option key={aspect} value={aspect}>
+                        {aspect}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1462,7 +1534,11 @@ function App() {
                 <div>
                   <label className="flex items-center text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Sentiment polarity
-                    {isFieldValid("sentiment_polarity") && <span className="text-blue-500 bg-blue-50 dark:bg-blue-900/50 rounded-full w-4 h-4 flex items-center justify-center ml-2 text-xs">✓</span>}
+                    {isFieldValid("sentiment_polarity") && (
+                      <span className="text-blue-500 bg-blue-50 dark:bg-blue-900/50 rounded-full w-4 h-4 flex items-center justify-center ml-2 text-xs">
+                        ✓
+                      </span>
+                    )}
                   </label>
                   <select
                     data-testid="new-sentiment-polarity"
@@ -1471,8 +1547,10 @@ function App() {
                     className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 cursor-pointer"
                   >
                     <option value="">Select sentiment...</option>
-                    {validSentimentPolarities.map(sentiment => (
-                      <option key={sentiment} value={sentiment}>{sentiment}</option>
+                    {validSentimentPolarities.map((sentiment) => (
+                      <option key={sentiment} value={sentiment}>
+                        {sentiment}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1483,10 +1561,12 @@ function App() {
               <button
                 data-testid="add-aspect-button"
                 onClick={addAnnotation}
-                disabled={!consideredSentimentElements.every(element => {
-                  const value = newAspect[element];
-                  return value && value.trim() !== "";
-                })}
+                disabled={
+                  !consideredSentimentElements.every((element) => {
+                    const value = newAspect[element];
+                    return value && value.trim() !== "";
+                  })
+                }
                 className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors"
               >
                 Add aspect
@@ -1495,13 +1575,18 @@ function App() {
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xs border dark:border-gray-700 p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Added annotations ({aspectList.length})</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Added annotations ({aspectList.length})
+              </h2>
               {aspectList.length > 0 && (
                 <button
                   onClick={clearAllAnnotations}
                   className="px-3 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                 >
-                  Delete all annotations ({aspectList.length}) <div className="bg-red-50/30 px-2 py-1 rounded-lg border text-center"><BackspaceIcon size={20} /></div>
+                  Delete all annotations ({aspectList.length}){" "}
+                  <div className="bg-red-50/30 px-2 py-1 rounded-lg border text-center">
+                    <BackspaceIcon size={20} />
+                  </div>
                 </button>
               )}
             </div>
@@ -1514,16 +1599,23 @@ function App() {
                   const colorIndex = aspect.colorIndex !== undefined ? aspect.colorIndex : index % 20;
                   const colorClasses = getColorByIndex(colorIndex);
                   const baseClasses = aspect.isLLMGenerated
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700'
-                    : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600';
+                    ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700"
+                    : "bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600";
                   return (
-                    <div key={index} data-testid="annotation-item" className={`border rounded-lg p-3 flex items-center gap-3 ${baseClasses}`}>
+                    <div
+                      key={index}
+                      data-testid="annotation-item"
+                      className={`border rounded-lg p-3 flex items-center gap-3 ${baseClasses}`}
+                    >
                       {/* Color indicator */}
-                      {aspect.isLLMGenerated ? <SparkleIcon size={16} weight="fill" color={isDark ? "white" : "black"} /> : <SparkleIcon size={16} weight="fill" color="#00000000" />}
-                      <div className={`flex justify-center items-center w-6 h-6 rounded-full ${colorClasses.bg300} shrink-0`}>
-
-                      </div>
-
+                      {aspect.isLLMGenerated ? (
+                        <SparkleIcon size={16} weight="fill" color={isDark ? "white" : "black"} />
+                      ) : (
+                        <SparkleIcon size={16} weight="fill" color="#00000000" />
+                      )}
+                      <div
+                        className={`flex justify-center items-center w-6 h-6 rounded-full ${colorClasses.bg300} shrink-0`}
+                      ></div>
                       {consideredSentimentElements.includes("aspect_term") && (
                         <div
                           className="flex-1 p-2 border border-gray-200 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-gray-100"
@@ -1533,7 +1625,8 @@ function App() {
                         >
                           <span className="truncate">{truncateText(aspect.aspect_term) || "Select phrase"}</span>
                         </div>
-                      )}                      {consideredSentimentElements.includes("opinion_term") && (
+                      )}{" "}
+                      {consideredSentimentElements.includes("opinion_term") && (
                         <div
                           className="flex-1 p-2 border border-gray-200 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-gray-100"
                           onClick={() => {
@@ -1543,7 +1636,6 @@ function App() {
                           <span className="truncate">{truncateText(aspect.opinion_term) || "Select phrase"}</span>
                         </div>
                       )}
-
                       {consideredSentimentElements.includes("aspect_category") && (
                         <select
                           value={aspect.aspect_category}
@@ -1551,24 +1643,26 @@ function App() {
                           onChange={(e) => updateAspectItem(index, "aspect_category", e.target.value)}
                           className="flex-1 p-2 border border-gray-200 dark:border-gray-600 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 cursor-pointer"
                         >
-                          {validAspectCategories.map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
+                          {validAspectCategories.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
                           ))}
                         </select>
                       )}
-
                       {consideredSentimentElements.includes("sentiment_polarity") && (
                         <select
                           value={aspect.sentiment_polarity}
                           onChange={(e) => updateAspectItem(index, "sentiment_polarity", e.target.value)}
                           className="flex-1 p-2 border border-gray-200 dark:border-gray-600 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 cursor-pointer"
                         >
-                          {validSentimentPolarities.map(sentiment => (
-                            <option key={sentiment} value={sentiment}>{sentiment}</option>
+                          {validSentimentPolarities.map((sentiment) => (
+                            <option key={sentiment} value={sentiment}>
+                              {sentiment}
+                            </option>
                           ))}
                         </select>
                       )}
-
                       <button
                         onClick={() => duplicateAspectItem(index)}
                         className="flex justify-center items-center w-8 h-8 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 rounded-sm shrink-0 border border-blue-200 dark:border-blue-800"
@@ -1576,7 +1670,6 @@ function App() {
                       >
                         <CopyIcon size={16} />
                       </button>
-
                       <button
                         onClick={() => deleteAspectItem(index)}
                         className="w-8 h-8 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 rounded-sm shrink-0 border border-red-200 dark:border-red-800"
@@ -1616,10 +1709,7 @@ function App() {
 
         {/* Phrase Selection Popup */}
         {showPhrasePopup && (
-          <div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-            onClick={closePhrasePopup}
-          >
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={closePhrasePopup}>
             <div
               className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto"
               onKeyDown={handleKeyDown}
@@ -1627,7 +1717,8 @@ function App() {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Check if we should show combined popup */}
-              {consideredSentimentElements.includes("aspect_term") && consideredSentimentElements.includes("opinion_term") ? (
+              {consideredSentimentElements.includes("aspect_term") &&
+              consideredSentimentElements.includes("opinion_term") ? (
                 <>
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
                     Select phrases for aspect term and opinion term
@@ -1659,16 +1750,17 @@ function App() {
                         )}
                         {autoCleanPhrases && !isImplicitAspect && (
                           <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                            <span className="bg-blue-600 px-2 py-1 mr-1 rounded-sm text-white">Blue highlight</span>: Selected phrase (cleaned automatically if needed)
+                            <span className="bg-blue-600 px-2 py-1 mr-1 rounded-sm text-white">Blue highlight</span>:
+                            Selected phrase (cleaned automatically if needed)
                           </div>
                         )}
                         <div className="text-lg leading-relaxed p-4 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                          {displayedText.split('').map((char, index) => (
+                          {displayedText.split("").map((char, index) => (
                             <span
                               key={`aspect-${index}`}
                               onClick={!isImplicitAspect ? () => handleAspectCharClick(index) : undefined}
                               className={!isImplicitAspect ? getAspectCharClass(index) : ""}
-                              style={isImplicitAspect ? { cursor: 'default' } : {}}
+                              style={isImplicitAspect ? { cursor: "default" } : {}}
                             >
                               {char}
                             </span>
@@ -1677,38 +1769,46 @@ function App() {
                         {!isImplicitAspect && (
                           <div className="mt-3 space-y-2 text-gray-900 dark:text-gray-100">
                             <div>
-                              <strong>Selected text:</strong> {aspectStartChar !== null && aspectEndChar !== null ? `"${displayedText.substring(aspectStartChar, aspectEndChar + 1)}"` : ""}
+                              <strong>Selected text:</strong>{" "}
+                              {aspectStartChar !== null && aspectEndChar !== null
+                                ? `"${displayedText.substring(aspectStartChar, aspectEndChar + 1)}"`
+                                : ""}
                             </div>
-                            {aspectStartChar !== null && aspectEndChar !== null && (() => {
-                              const originalText = displayedText.substring(aspectStartChar, aspectEndChar + 1);
-                              const cleanedText = cleanPhrase(originalText);
-                              if (originalText !== cleanedText) {
-                                const cleanedPositions = getCleanedPhrasePositions(aspectStartChar, aspectEndChar, displayedText);
-                                return (
-                                  <>
-                                    <div>
-                                      <strong>Cleaned aspect phrase:</strong> "<span className="text-green-600 dark:text-green-400">{cleanedText}</span>"
-                                    </div>
-                                    {savePhrasePositions && (
-                                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                                        Saved positions: {cleanedPositions.start} - {cleanedPositions.end}
+                            {aspectStartChar !== null &&
+                              aspectEndChar !== null &&
+                              (() => {
+                                const originalText = displayedText.substring(aspectStartChar, aspectEndChar + 1);
+                                const cleanedText = cleanPhrase(originalText);
+                                if (originalText !== cleanedText) {
+                                  const cleanedPositions = getCleanedPhrasePositions(
+                                    aspectStartChar,
+                                    aspectEndChar,
+                                    displayedText,
+                                  );
+                                  return (
+                                    <>
+                                      <div>
+                                        <strong>Cleaned aspect phrase:</strong> "
+                                        <span className="text-green-600 dark:text-green-400">{cleanedText}</span>"
                                       </div>
-                                    )}
-                                  </>
-                                );
-                              } else if (savePhrasePositions) {
-                                return (
-                                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                                    Saved positions: {aspectStartChar} - {aspectEndChar}
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })()}
+                                      {savePhrasePositions && (
+                                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                                          Saved positions: {cleanedPositions.start} - {cleanedPositions.end}
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                } else if (savePhrasePositions) {
+                                  return (
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                      Saved positions: {aspectStartChar} - {aspectEndChar}
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
                             {savePhrasePositions && (aspectStartChar === null || aspectEndChar === null) && (
-                              <div className="text-sm text-gray-600 dark:text-gray-400">
-                                Saved positions:
-                              </div>
+                              <div className="text-sm text-gray-600 dark:text-gray-400">Saved positions:</div>
                             )}
                           </div>
                         )}
@@ -1740,16 +1840,17 @@ function App() {
                         )}
                         {autoCleanPhrases && !isImplicitOpinion && (
                           <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                            <span className="bg-blue-600 px-2 py-1 mr-1 rounded-sm text-white">Blue highlight</span>: Selected phrase (cleaned automatically if needed)
+                            <span className="bg-blue-600 px-2 py-1 mr-1 rounded-sm text-white">Blue highlight</span>:
+                            Selected phrase (cleaned automatically if needed)
                           </div>
                         )}
                         <div className="text-lg leading-relaxed p-4 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                          {displayedText.split('').map((char, index) => (
+                          {displayedText.split("").map((char, index) => (
                             <span
                               key={`opinion-${index}`}
                               onClick={!isImplicitOpinion ? () => handleOpinionCharClick(index) : undefined}
                               className={!isImplicitOpinion ? getOpinionCharClass(index) : ""}
-                              style={isImplicitOpinion ? { cursor: 'default' } : {}}
+                              style={isImplicitOpinion ? { cursor: "default" } : {}}
                             >
                               {char}
                             </span>
@@ -1758,38 +1859,46 @@ function App() {
                         {!isImplicitOpinion && (
                           <div className="mt-3 space-y-2 text-gray-900 dark:text-gray-100">
                             <div>
-                              <strong>Selected text:</strong> {opinionStartChar !== null && opinionEndChar !== null ? `"${displayedText.substring(opinionStartChar, opinionEndChar + 1)}"` : ""}
+                              <strong>Selected text:</strong>{" "}
+                              {opinionStartChar !== null && opinionEndChar !== null
+                                ? `"${displayedText.substring(opinionStartChar, opinionEndChar + 1)}"`
+                                : ""}
                             </div>
-                            {opinionStartChar !== null && opinionEndChar !== null && (() => {
-                              const originalText = displayedText.substring(opinionStartChar, opinionEndChar + 1);
-                              const cleanedText = cleanPhrase(originalText);
-                              if (originalText !== cleanedText) {
-                                const cleanedPositions = getCleanedPhrasePositions(opinionStartChar, opinionEndChar, displayedText);
-                                return (
-                                  <>
-                                    <div>
-                                      <strong>Cleaned opinion phrase:</strong> "<span className="text-green-600 dark:text-green-400">{cleanedText}</span>"
-                                    </div>
-                                    {savePhrasePositions && (
-                                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                                        Saved positions: {cleanedPositions.start} - {cleanedPositions.end}
+                            {opinionStartChar !== null &&
+                              opinionEndChar !== null &&
+                              (() => {
+                                const originalText = displayedText.substring(opinionStartChar, opinionEndChar + 1);
+                                const cleanedText = cleanPhrase(originalText);
+                                if (originalText !== cleanedText) {
+                                  const cleanedPositions = getCleanedPhrasePositions(
+                                    opinionStartChar,
+                                    opinionEndChar,
+                                    displayedText,
+                                  );
+                                  return (
+                                    <>
+                                      <div>
+                                        <strong>Cleaned opinion phrase:</strong> "
+                                        <span className="text-green-600 dark:text-green-400">{cleanedText}</span>"
                                       </div>
-                                    )}
-                                  </>
-                                );
-                              } else if (savePhrasePositions) {
-                                return (
-                                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                                    Saved positions: {opinionStartChar} - {opinionEndChar}
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })()}
+                                      {savePhrasePositions && (
+                                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                                          Saved positions: {cleanedPositions.start} - {cleanedPositions.end}
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                } else if (savePhrasePositions) {
+                                  return (
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                      Saved positions: {opinionStartChar} - {opinionEndChar}
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
                             {savePhrasePositions && (opinionStartChar === null || opinionEndChar === null) && (
-                              <div className="text-sm text-gray-600 dark:text-gray-400">
-                                Saved positions:
-                              </div>
+                              <div className="text-sm text-gray-600 dark:text-gray-400">Saved positions:</div>
                             )}
                           </div>
                         )}
@@ -1805,72 +1914,106 @@ function App() {
 
                   {((currentEditingField === "aspect_term" && allowImplicitAspectTerm) ||
                     (currentEditingField === "opinion_term" && allowImplicitOpinionTerm)) && (
-                      <div className="mb-4">
-                        <CustomCheckbox
-                          checked={currentEditingField === "aspect_term" ? isImplicitAspect : isImplicitOpinion}
-                          onChange={(checked) => {
-                            if (currentEditingField === "aspect_term") {
-                              setIsImplicitAspect(checked);
-                            } else {
-                              setIsImplicitOpinion(checked);
-                            }
-                          }}
-                          label={currentEditingField === "aspect_term" ? "Implicit aspect" : "Implicit opinion"}
-                          className="mb-4"
-                        />
-                      </div>
-                    )}
+                    <div className="mb-4">
+                      <CustomCheckbox
+                        checked={currentEditingField === "aspect_term" ? isImplicitAspect : isImplicitOpinion}
+                        onChange={(checked) => {
+                          if (currentEditingField === "aspect_term") {
+                            setIsImplicitAspect(checked);
+                          } else {
+                            setIsImplicitOpinion(checked);
+                          }
+                        }}
+                        label={currentEditingField === "aspect_term" ? "Implicit aspect" : "Implicit opinion"}
+                        className="mb-4"
+                      />
+                    </div>
+                  )}
 
                   <div className="mb-6">
-                    {!((currentEditingField === "aspect_term" && isImplicitAspect) ||
-                      (currentEditingField === "opinion_term" && isImplicitOpinion)) ? (
+                    {!(
+                      (currentEditingField === "aspect_term" && isImplicitAspect) ||
+                      (currentEditingField === "opinion_term" && isImplicitOpinion)
+                    ) ? (
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                         Click on the start character and then on the end character of the phrase:
                       </p>
                     ) : (
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 italic">
-                        Text display (selection disabled for implicit {currentEditingField === "aspect_term" ? "aspect" : "opinion"}):
+                        Text display (selection disabled for implicit{" "}
+                        {currentEditingField === "aspect_term" ? "aspect" : "opinion"}):
                       </p>
                     )}
-                    {autoCleanPhrases && !((currentEditingField === "aspect_term" && isImplicitAspect) ||
-                      (currentEditingField === "opinion_term" && isImplicitOpinion)) && (
+                    {autoCleanPhrases &&
+                      !(
+                        (currentEditingField === "aspect_term" && isImplicitAspect) ||
+                        (currentEditingField === "opinion_term" && isImplicitOpinion)
+                      ) && (
                         <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                          <span className="bg-blue-300 dark:bg-blue-600 px-1 rounded-sm text-black dark:text-white">Blue highlight</span>: Selected phrase (cleaned automatically if needed)
+                          <span className="bg-blue-300 dark:bg-blue-600 px-1 rounded-sm text-black dark:text-white">
+                            Blue highlight
+                          </span>
+                          : Selected phrase (cleaned automatically if needed)
                         </div>
                       )}
                     <div className="text-lg leading-relaxed p-4 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                      {displayedText.split('').map((char, index) => (
+                      {displayedText.split("").map((char, index) => (
                         <span
                           key={index}
-                          onClick={!((currentEditingField === "aspect_term" && isImplicitAspect) ||
-                            (currentEditingField === "opinion_term" && isImplicitOpinion)) ?
-                            () => handleCharClick(index) : undefined}
-                          className={!((currentEditingField === "aspect_term" && isImplicitAspect) ||
-                            (currentEditingField === "opinion_term" && isImplicitOpinion)) ?
-                            getSingleFieldCharClass(index) : ""}
-                          style={((currentEditingField === "aspect_term" && isImplicitAspect) ||
-                            (currentEditingField === "opinion_term" && isImplicitOpinion)) ?
-                            { cursor: 'default' } : {}}
+                          onClick={
+                            !(
+                              (currentEditingField === "aspect_term" && isImplicitAspect) ||
+                              (currentEditingField === "opinion_term" && isImplicitOpinion)
+                            )
+                              ? () => handleCharClick(index)
+                              : undefined
+                          }
+                          className={
+                            !(
+                              (currentEditingField === "aspect_term" && isImplicitAspect) ||
+                              (currentEditingField === "opinion_term" && isImplicitOpinion)
+                            )
+                              ? getSingleFieldCharClass(index)
+                              : ""
+                          }
+                          style={
+                            (currentEditingField === "aspect_term" && isImplicitAspect) ||
+                            (currentEditingField === "opinion_term" && isImplicitOpinion)
+                              ? { cursor: "default" }
+                              : {}
+                          }
                         >
                           {char}
                         </span>
                       ))}
                     </div>
-                    {!((currentEditingField === "aspect_term" && isImplicitAspect) ||
-                      (currentEditingField === "opinion_term" && isImplicitOpinion)) && (
-                        <div className="mt-3 space-y-2 text-gray-900 dark:text-gray-100">
-                          <div>
-                            <strong>Selected text:</strong> {selectedStartChar !== null && selectedEndChar !== null ? `"${displayedText.substring(selectedStartChar, selectedEndChar + 1)}"` : ""}
-                          </div>
-                          {selectedStartChar !== null && selectedEndChar !== null && (() => {
+                    {!(
+                      (currentEditingField === "aspect_term" && isImplicitAspect) ||
+                      (currentEditingField === "opinion_term" && isImplicitOpinion)
+                    ) && (
+                      <div className="mt-3 space-y-2 text-gray-900 dark:text-gray-100">
+                        <div>
+                          <strong>Selected text:</strong>{" "}
+                          {selectedStartChar !== null && selectedEndChar !== null
+                            ? `"${displayedText.substring(selectedStartChar, selectedEndChar + 1)}"`
+                            : ""}
+                        </div>
+                        {selectedStartChar !== null &&
+                          selectedEndChar !== null &&
+                          (() => {
                             const originalText = displayedText.substring(selectedStartChar, selectedEndChar + 1);
                             const cleanedText = cleanPhrase(originalText);
                             if (originalText !== cleanedText) {
-                              const cleanedPositions = getCleanedPhrasePositions(selectedStartChar, selectedEndChar, displayedText);
+                              const cleanedPositions = getCleanedPhrasePositions(
+                                selectedStartChar,
+                                selectedEndChar,
+                                displayedText,
+                              );
                               return (
                                 <>
                                   <div>
-                                    <strong>Cleaned phrase:</strong> "<span className="text-green-600 dark:text-green-400">{cleanedText}</span>"
+                                    <strong>Cleaned phrase:</strong> "
+                                    <span className="text-green-600 dark:text-green-400">{cleanedText}</span>"
                                   </div>
                                   {savePhrasePositions && (
                                     <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -1888,13 +2031,11 @@ function App() {
                             }
                             return null;
                           })()}
-                          {savePhrasePositions && (selectedStartChar === null || selectedEndChar === null) && (
-                            <div className="text-sm text-gray-600 dark:text-gray-400">
-                              Saved positions:
-                            </div>
-                          )}
-                        </div>
-                      )}
+                        {savePhrasePositions && (selectedStartChar === null || selectedEndChar === null) && (
+                          <div className="text-sm text-gray-600 dark:text-gray-400">Saved positions:</div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -1909,15 +2050,17 @@ function App() {
                 <button
                   onClick={savePhraseSelection}
                   disabled={
-                    consideredSentimentElements.includes("aspect_term") && consideredSentimentElements.includes("opinion_term") ?
-                      // Combined mode: BOTH fields must be valid
-                      !(isImplicitAspect || (aspectStartChar !== null && aspectEndChar !== null)) ||
-                      !(isImplicitOpinion || (opinionStartChar !== null && opinionEndChar !== null))
-                      :
-                      // Single mode: current field must be valid
-                      !((currentEditingField === "aspect_term" && isImplicitAspect) ||
-                        (currentEditingField === "opinion_term" && isImplicitOpinion)) &&
-                      (selectedStartChar === null || selectedEndChar === null)
+                    consideredSentimentElements.includes("aspect_term") &&
+                    consideredSentimentElements.includes("opinion_term")
+                      ? // Combined mode: BOTH fields must be valid
+                        !(isImplicitAspect || (aspectStartChar !== null && aspectEndChar !== null)) ||
+                        !(isImplicitOpinion || (opinionStartChar !== null && opinionEndChar !== null))
+                      : // Single mode: current field must be valid
+                        !(
+                          (currentEditingField === "aspect_term" && isImplicitAspect) ||
+                          (currentEditingField === "opinion_term" && isImplicitOpinion)
+                        ) &&
+                        (selectedStartChar === null || selectedEndChar === null)
                   }
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
                 >
