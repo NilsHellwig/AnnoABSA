@@ -1,19 +1,24 @@
 import re
+import ipaddress
+from contextlib import asynccontextmanager
+from urllib.parse import urlsplit
 import numpy as np
 from rank_bm25 import BM25Okapi
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import pandas as pd
 import json
 import os
 from fastapi import HTTPException
 
-app = FastAPI()
+from data_io import DataFileError, data_lock, file_type_for, read_data, validate_data, write_data
+from version import __version__
 
 # Global variable to store the data file path and type
 DATA_FILE_PATH = os.environ.get('ABSA_DATA_PATH', "annotations.csv")  # Default
-DATA_FILE_TYPE = "json" if DATA_FILE_PATH.endswith('.json') else "csv"
+DATA_FILE_TYPE = file_type_for(DATA_FILE_PATH)
 CONFIG_PATH = os.environ.get('ABSA_CONFIG_PATH', None)  # Path to config file
 CONFIG_DATA = {}  # Store configuration data including session_id
 
@@ -34,7 +39,7 @@ def set_data_file(file_path: str):
     """Set the data file path and determine file type."""
     global DATA_FILE_PATH, DATA_FILE_TYPE
     DATA_FILE_PATH = file_path
-    DATA_FILE_TYPE = "json" if file_path.endswith('.json') else "csv"
+    DATA_FILE_TYPE = file_type_for(file_path)
 
 
 def set_config_file(config_path: str):
@@ -77,42 +82,133 @@ def set_config(config_dict: dict):
 
 
 def load_data():
-    """Load data from CSV or JSON file with UTF-8 encoding."""
-    if DATA_FILE_TYPE == "json":
-        with open(DATA_FILE_PATH, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    else:
-        return pd.read_csv(DATA_FILE_PATH, encoding='utf-8')
+    """Load data from CSV or JSON file with UTF-8 encoding (raises DataFileError if malformed)."""
+    return read_data(DATA_FILE_PATH, DATA_FILE_TYPE)
 
 
 def save_data(data):
-    """Save data to CSV or JSON file with UTF-8 encoding."""
-    if DATA_FILE_TYPE == "json":
-        with open(DATA_FILE_PATH, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+    """Atomically save data to CSV or JSON file with UTF-8 encoding.
+
+    Callers that load, modify and save must hold `data_lock(DATA_FILE_PATH)`.
+    """
+    write_data(DATA_FILE_PATH, DATA_FILE_TYPE, data)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Run startup tasks including data validation and auto-adding missing position data."""
+    print(f"🚀 Starting AnnoABSA Backend v{__version__}...")
+    print(f"📄 Data file: {DATA_FILE_PATH} (type: {DATA_FILE_TYPE})")
+    if CONFIG_PATH:
+        print(f"⚙️  Config file: {CONFIG_PATH}")
+    print(f"🔒 Allowed origins: {', '.join(ALLOWED_ORIGINS) or '(any)'}")
+
+    try:
+        problems = validate_data(load_data(), DATA_FILE_TYPE)
+    except (FileNotFoundError, DataFileError) as e:
+        problems = [str(e)]
+    for problem in problems:
+        print(f"❌ Invalid data file: {problem}")
+
+    # Auto-add missing position data when server starts (only if enabled)
+    if AUTO_POSITIONS and not problems:
+        print("🔧 Auto-positions feature enabled - scanning for missing position data...")
+        auto_add_missing_positions()
+    elif not AUTO_POSITIONS:
+        print("ℹ️  Auto-positions feature disabled (use --auto-positions to enable)")
+
+    print("✨ Backend ready!")
+    yield
+
+
+app = FastAPI(version=__version__, lifespan=lifespan)
+
+
+# --- Request origin checks -------------------------------------------------
+# Only the AnnoABSA frontend may talk to the backend. CORS alone is not enough,
+# because browsers send "simple" cross-origin POSTs without a preflight, so
+# requests from foreign origins are rejected explicitly. Unknown Host headers
+# are rejected as well to defeat DNS rebinding.
+
+DEFAULT_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+
+def _split_env_list(name):
+    return [v.strip().rstrip('/') for v in os.environ.get(name, "").split(",") if v.strip()]
+
+
+ALLOWED_ORIGINS = _split_env_list('ABSA_ALLOWED_ORIGINS') or DEFAULT_ALLOWED_ORIGINS
+ALLOW_ANY_ORIGIN = "*" in ALLOWED_ORIGINS
+if ALLOW_ANY_ORIGIN:
+    ALLOWED_ORIGINS = []
+ALLOWED_HOSTS = {"localhost"} | {urlsplit(o).hostname for o in ALLOWED_ORIGINS} | \
+    {h.lower() for h in _split_env_list('ABSA_ALLOWED_HOSTS')}
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+
+def _is_allowed_host(host_header):
+    host = urlsplit(f"//{host_header}").hostname if host_header else None
+    if not host or host in ALLOWED_HOSTS or host.endswith(".localhost"):
+        return bool(host)
+    try:
+        ipaddress.ip_address(host)  # IP literals cannot be rebound
+        return True
+    except ValueError:
+        return False
+
+
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Content-Security-Policy": "frame-ancestors 'none'",
+    "Referrer-Policy": "no-referrer",
+}
+
+
+@app.middleware("http")
+async def origin_guard_and_security_headers(request: Request, call_next):
+    origin = request.headers.get("origin")
+    fetch_site = request.headers.get("sec-fetch-site")
+    if ALLOW_ANY_ORIGIN:
+        rejected = None
+    elif not _is_allowed_host(request.headers.get("host")):
+        rejected = "Host not allowed"
+    elif origin is not None and origin.rstrip('/') not in ALLOWED_ORIGINS:
+        rejected = "Origin not allowed"
+    elif origin is None and fetch_site == "cross-site":
+        rejected = "Cross-site request not allowed"
+    elif origin is None and request.method not in SAFE_METHODS and fetch_site not in (None, "same-origin", "none"):
+        rejected = "Cross-origin write not allowed"
     else:
-        if isinstance(data, list):
-            # Convert list of dicts to DataFrame
-            df = pd.DataFrame(data)
-        else:
-            df = data
-        df.to_csv(DATA_FILE_PATH, index=False, encoding='utf-8')
+        rejected = None
+
+    if rejected:
+        response = JSONResponse(status_code=403, content={"detail": rejected})
+    else:
+        response = await call_next(request)
+    for name, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(name, value)
+    return response
 
 
 app.add_middleware(
     CORSMiddleware,
-    # Allow all origins for flexibility with different IPs/ports
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"] if ALLOW_ANY_ORIGIN else ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 
-# Datenmodell für POST Requests
-class Item(BaseModel):
-    name: str
-    value: int
+@app.exception_handler(DataFileError)
+async def data_file_error_handler(request: Request, exc: DataFileError):
+    return JSONResponse(status_code=422, content={"detail": f"Invalid data file: {exc}"})
+
+
+@app.get("/version")
+def get_version():
+    return {"version": __version__}
+
 
 # Datenmodell für Annotations
 
@@ -145,7 +241,8 @@ def get_settings():
         "disable_ai_automatic_prediction": CONFIG_DATA.get("disable_ai_automatic_prediction", False),
         "annotation_guideline": CONFIG_DATA.get("annotation_guideline", None),
         "current_index": get_current_index(),
-        "max_number_of_idxs": max_number_of_idxs()
+        "max_number_of_idxs": max_number_of_idxs(),
+        "version": __version__
     }
 
     # Add session_id if it exists
@@ -207,6 +304,8 @@ def get_data(data_idx: int):
             row_dict['aspect_category_list'] = aspects
             return row_dict
 
+    except (HTTPException, DataFileError):
+        raise
     except FileNotFoundError:
         raise HTTPException(
             status_code=404, detail=f"{DATA_FILE_PATH} not found")
@@ -218,6 +317,8 @@ def get_total_count():
     try:
         data = load_data()
         return len(data)
+    except DataFileError:
+        raise
     except FileNotFoundError:
         raise HTTPException(
             status_code=404, detail=f"{DATA_FILE_PATH} not found")
@@ -241,6 +342,8 @@ def get_current_index():
                 if pd.isna(df.iloc[idx]['label']) or df.iloc[idx]['label'] == "":
                     return idx
             return len(df)
+    except DataFileError:
+        raise
     except FileNotFoundError:
         return 0
     except Exception as e:
@@ -251,28 +354,11 @@ def max_number_of_idxs():
     try:
         data = load_data()
         return len(data)
+    except DataFileError:
+        raise
     except FileNotFoundError:
         raise HTTPException(
             status_code=404, detail=f"{DATA_FILE_PATH} not found")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# POST Endpoint
-
-
-@app.post("/data/{data_idx}")
-def post_data(data_idx: int, item: Item):
-    # add value to row label
-    try:
-        df = pd.read_csv("annotations.csv")
-        if data_idx >= len(df) or data_idx < 0:
-            raise HTTPException(status_code=404, detail="Index out of range")
-        df.at[data_idx, 'label'] = item.value
-        df.to_csv("annotations.csv", index=False)
-        return {"message": "Data updated successfully"}
-    except FileNotFoundError:
-        raise HTTPException(
-            status_code=404, detail="annotations.csv not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -282,24 +368,30 @@ def post_data(data_idx: int, item: Item):
 @app.post("/annotations/{data_idx}")
 def post_annotations(data_idx: int, annotation_data: AnnotationData):
     try:
-        data = load_data()
-        if data_idx >= len(data) or data_idx < 0:
-            raise HTTPException(status_code=404, detail="Index out of range")
-
         annotation_data = annotation_data.value
+        if not all(isinstance(t, dict) for t in annotation_data):
+            raise HTTPException(
+                status_code=422, detail="Each annotation tuple must be an object")
 
-        if DATA_FILE_TYPE == "json":
-            # Update JSON format - set "label" key with annotation data
-            data[data_idx]['label'] = annotation_data
-            save_data(data)
-        else:
-            # Update CSV format
-            df = data
-            annotations_json = json.dumps(annotation_data)
-            df.at[data_idx, 'label'] = annotations_json
-            save_data(df)
+        with data_lock(DATA_FILE_PATH):
+            data = load_data()
+            if data_idx >= len(data) or data_idx < 0:
+                raise HTTPException(status_code=404, detail="Index out of range")
+
+            if DATA_FILE_TYPE == "json":
+                # Update JSON format - set "label" key with annotation data
+                data[data_idx]['label'] = annotation_data
+                save_data(data)
+            else:
+                # Update CSV format
+                df = data
+                annotations_json = json.dumps(annotation_data, ensure_ascii=False)
+                df.at[data_idx, 'label'] = annotations_json
+                save_data(df)
 
         return {"message": "Annotations saved successfully"}
+    except (HTTPException, DataFileError):
+        raise
     except FileNotFoundError:
         raise HTTPException(
             status_code=404, detail=f"{DATA_FILE_PATH} not found")
@@ -313,30 +405,38 @@ def post_annotations(data_idx: int, annotation_data: AnnotationData):
 def post_timing(data_idx: int, timing: dict):
     """Speichere Timing-Informationen für ein Beispiel (append an Liste)."""
     try:
-        data = load_data()
-        if data_idx >= len(data) or data_idx < 0:
-            raise HTTPException(status_code=404, detail="Index out of range")
-        timing_entry = {"duration": timing.get(
-            "duration", 0), "change": timing.get("change", False)}
-        if DATA_FILE_TYPE == "json":
-            item = data[data_idx]
-            if "timings" not in item or not isinstance(item["timings"], list):
-                item["timings"] = []
-            item["timings"].append(timing_entry)
-            save_data(data)
-        else:
-            df = data
-            timings_col = df.at[data_idx,
-                                "timings"] if "timings" in df.columns else None
-            try:
-                timings = json.loads(timings_col) if timings_col else []
-            except Exception:
-                timings = []
-            timings.append(timing_entry)
-            df.at[data_idx, "timings"] = json.dumps(
-                timings, ensure_ascii=False)
-            save_data(df)
+        duration = timing.get("duration", 0)
+        if isinstance(duration, bool) or not isinstance(duration, (int, float)):
+            raise HTTPException(status_code=422, detail="'duration' must be a number")
+        timing_entry = {"duration": duration,
+                        "change": bool(timing.get("change", False))}
+        with data_lock(DATA_FILE_PATH):
+            data = load_data()
+            if data_idx >= len(data) or data_idx < 0:
+                raise HTTPException(status_code=404, detail="Index out of range")
+            if DATA_FILE_TYPE == "json":
+                item = data[data_idx]
+                if "timings" not in item or not isinstance(item["timings"], list):
+                    item["timings"] = []
+                item["timings"].append(timing_entry)
+                save_data(data)
+            else:
+                df = data
+                if "timings" not in df.columns:
+                    df["timings"] = ""
+                df["timings"] = df["timings"].astype(object)
+                timings_col = df.at[data_idx, "timings"]
+                try:
+                    timings = json.loads(timings_col) if isinstance(timings_col, str) and timings_col else []
+                except Exception:
+                    timings = []
+                timings.append(timing_entry)
+                df.at[data_idx, "timings"] = json.dumps(
+                    timings, ensure_ascii=False)
+                save_data(df)
         return {"message": "Timing gespeichert"}
+    except (HTTPException, DataFileError):
+        raise
     except FileNotFoundError:
         raise HTTPException(
             status_code=404, detail=f"{DATA_FILE_PATH} not found")
@@ -373,6 +473,11 @@ def auto_add_missing_positions():
 
     print("🔍 Scanning for missing position data...")
 
+    with data_lock(DATA_FILE_PATH):
+        _add_missing_positions_locked()
+
+
+def _add_missing_positions_locked():
     try:
         data = load_data()
         data_changed = False
@@ -698,7 +803,7 @@ def predict_openai(text, considered_sentiment_elements, examples, aspect_categor
 
     try:
         print("🔍 Sending request to OpenAI...")
-        completion = client.beta.chat.completions.parse(
+        completion = client.chat.completions.parse(
             model=llm_model,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant for aspect-based sentiment analysis. Extract the sentiment elements from the given text according to the provided instructions."},
@@ -914,6 +1019,8 @@ def get_ai_prediction(data_idx: int):
                     aspect['ot_end'] = end
 
         return predictions
+    except (HTTPException, DataFileError):
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error loading prediction: {str(e)}")
@@ -927,21 +1034,20 @@ def get_avg_annotation_time():
         total_duration = 0.0
         total_entries = 0
 
-        for idx, item in enumerate(data):
-            if DATA_FILE_TYPE == "json":
-                timings = item.get("timings", []) if isinstance(
-                    item.get("timings"), list) else []
-            else:
-                # CSV: timings stored as JSON string in 'timings' column
-                timings_str = item.get("timings") if hasattr(item, 'get') and callable(item.get) else (
-                    data.iloc[idx]["timings"] if "timings" in data.columns and idx < len(
-                        data) else None
-                )
+        if DATA_FILE_TYPE == "json":
+            timings_per_item = [item.get("timings") for item in data]
+        else:
+            # CSV: timings stored as JSON string in 'timings' column
+            timings_per_item = list(data["timings"]) if "timings" in data.columns else []
+
+        for timings in timings_per_item:
+            if isinstance(timings, str):
                 try:
-                    timings = json.loads(
-                        timings_str) if timings_str and timings_str != '' else []
+                    timings = json.loads(timings) if timings else []
                 except Exception:
                     timings = []
+            if not isinstance(timings, list):
+                timings = []
 
             # Sum all duration values for this example
             for timing_entry in timings:
@@ -957,27 +1063,12 @@ def get_avg_annotation_time():
             "total_duration": round(total_duration, 2)
         }
 
+    except DataFileError:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error calculating average annotation time: {str(e)}")
 
-
-@app.on_event("startup")
-async def startup_event():
-    """Run startup tasks including auto-adding missing position data."""
-    print(f"🚀 Starting AnnoABSA Backend...")
-    print(f"📄 Data file: {DATA_FILE_PATH} (type: {DATA_FILE_TYPE})")
-    if CONFIG_PATH:
-        print(f"⚙️  Config file: {CONFIG_PATH}")
-
-    # Auto-add missing position data when server starts (only if enabled)
-    if AUTO_POSITIONS:
-        print("🔧 Auto-positions feature enabled - scanning for missing position data...")
-        auto_add_missing_positions()
-    else:
-        print("ℹ️  Auto-positions feature disabled (use --auto-positions to enable)")
-
-    print("✨ Backend ready!")
 
 # BM25-based similarity matching (no caching needed)
 

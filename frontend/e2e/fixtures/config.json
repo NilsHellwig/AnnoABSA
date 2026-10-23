@@ -1,0 +1,8 @@
+{
+  "session_id": "e2e",
+  "sentiment_elements": ["aspect_category", "sentiment_polarity"],
+  "sentiment_polarity_options": ["positive", "negative", "neutral"],
+  "aspect_categories": ["food quality", "service general", "drinks style_options", "ambience general"],
+  "store_time": false,
+  "enable_pre_prediction": false
+}

@@ -1,6 +1,7 @@
-fastapi
-uvicorn
-pandas
-rank-bm25
-openai
-ollama
+fastapi>=0.161.1
+uvicorn>=0.54.0
+pandas>=3.1.0
+numpy>=2.3
+rank-bm25>=0.2.2
+openai>=3.37.0
+ollama>=0.6.3

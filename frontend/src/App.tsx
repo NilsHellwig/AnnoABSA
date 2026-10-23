@@ -53,6 +53,8 @@ function App() {
   const [totalCount, setTotalCount] = useState<number>(0);
   const [inputIndex, setInputIndex] = useState<string>("");
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [backendError, setBackendError] = useState<string | null>(null);
+  const [version, setVersion] = useState<string | null>(null);
 
   // Timing-Feature: Einfache Zeitmessung
   const [startTime, setStartTime] = useState<number>(Date.now());
@@ -642,7 +644,7 @@ function App() {
 
   const updateAspectItem = (index: number | null, field: keyof AspectItem, value: string | number, startPos: number | null = null, endPos: number | null = null): void => {
     const updatedList = [...aspectList];
-    updatedList[index][field] = value;
+    (updatedList[index] as any)[field] = value;
 
     if (savePhrasePositions) {
       if (field === "aspect_term") {
@@ -746,11 +748,40 @@ function App() {
     }
   };
 
+  // A tuple in the "new annotation" form is only kept after clicking "Add aspect"
+  const hasStartedNewAspect = (): boolean =>
+    consideredSentimentElements.some(element => {
+      const value = (newAspect as any)[element];
+      return typeof value === 'string' && value.trim() !== "";
+    });
+
+  const confirmDiscardNewAspect = (): boolean =>
+    !hasStartedNewAspect() ||
+    window.confirm(
+      "The annotation you started in the form has not been added (click \"Add aspect\" to keep it) " +
+      "and will be discarded. Continue anyway?"
+    );
+
+  const getErrorDetail = async (response: Response): Promise<string> => {
+    try {
+      const body = await response.json();
+      return typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail);
+    } catch (e) {
+      return `${response.status} ${response.statusText}`;
+    }
+  };
+
   // Backend API functions
   const fetchSettings = async (): Promise<number | undefined> => {
     try {
       const response = await fetch(`${backendUrl}/settings`);
+      if (!response.ok) {
+        setBackendError(await getErrorDetail(response));
+        return undefined;
+      }
       const settings = await response.json();
+      setBackendError(null);
+      setVersion(settings["version"] || null);
 
       setConsideredSentimentElements(settings["sentiment elements"]);
       setValidSentimentPolarities(settings["sentiment_polarity options"]);
@@ -777,6 +808,7 @@ function App() {
       return settings["current_index"];
     } catch (error) {
       console.error('Error fetching settings:', error);
+      setBackendError(`Cannot reach the backend at ${backendUrl}`);
       return undefined;
     }
   };
@@ -800,6 +832,10 @@ function App() {
     setIsLoadingData(true);
     try {
       const response = await fetch(`${backendUrl}/data/${index}`);
+      if (!response.ok) {
+        setBackendError(await getErrorDetail(response));
+        return;
+      }
       const data = await response.json();
       // Update aspect category options based on example-specific list
       if (data.aspect_category_list) {
@@ -837,7 +873,7 @@ function App() {
       // Timer resetten beim Laden neuer Daten
       resetTimer();
       // Reset form - use current consideredSentimentElements or wait for it to be loaded
-      const resetAspect = {};
+      const resetAspect: any = {};
       if (consideredSentimentElements.length > 0) {
         consideredSentimentElements.forEach(element => {
           resetAspect[element] = "";
@@ -965,16 +1001,20 @@ function App() {
       });
 
       if (response.ok) {
+        setBackendError(null);
         return true;
       }
+      setBackendError(`Saving failed: ${await getErrorDetail(response)}`);
     } catch (error) {
       console.error('Error saving annotations:', error);
+      setBackendError(`Saving failed: cannot reach the backend at ${backendUrl}`);
     }
     return false;
   };
 
   const goToNext = async () => {
     if (aspectList.length === 0) return;
+    if (!confirmDiscardNewAspect()) return;
 
     const success = await saveAnnotations(aspectList);
     if (success) {
@@ -990,6 +1030,8 @@ function App() {
   };
 
   const annotateEmpty = async () => {
+    if (!confirmDiscardNewAspect()) return;
+
     // Timing: Duration berechnen und Änderung prüfen
     const duration = getCurrentDuration();
     const change = annotationsChanged(lastLoadedAnnotations, []);
@@ -1050,7 +1092,7 @@ function App() {
   // Initialize form when consideredSentimentElements changes
   useEffect(() => {
     if (consideredSentimentElements.length > 0) {
-      const resetAspect = {};
+      const resetAspect: any = {};
       consideredSentimentElements.forEach(element => {
         resetAspect[element] = "";
       });
@@ -1159,13 +1201,16 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
+      <header className="bg-white dark:bg-gray-800 shadow-xs border-b dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AnnoABSA</h1>
+              <h1 data-testid="app-title" className="text-2xl font-bold text-gray-900 dark:text-white">AnnoABSA</h1>
+              {version && (
+                <span data-testid="app-version" className="ml-2 text-xs text-gray-500 dark:text-gray-400">v{version}</span>
+              )}
               {sessionId && (
-                <span className="ml-4 px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm rounded-md">
+                <span data-testid="session-id" className="ml-4 px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm rounded-md">
                   Session: {sessionId}
                 </span>
               )}
@@ -1180,29 +1225,32 @@ function App() {
               )}
               <div className="flex items-center space-x-2">
                 <input
+                  data-testid="goto-index-input"
                   type="number"
                   value={inputIndex}
                   onChange={(e) => setInputIndex(e.target.value)}
                   placeholder="Index..."
                   disabled={isLoadingData}
-                  className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                   min="1"
                   max={totalCount}
                 />
                 <button
+                  data-testid="goto-index-button"
                   onClick={goToIndex}
                   disabled={parseInt(inputIndex) > totalCount || parseInt(inputIndex) < 1 || isNaN(parseInt(inputIndex)) === true || isLoadingData}
-                  className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded disabled:cursor-not-allowed"
+                  className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-sm disabled:cursor-not-allowed"
                 >
                   Go to
                 </button>
               </div>
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
+                <span data-testid="completed-count" className="text-sm text-gray-600 dark:text-gray-400">
                   {settingsCurrentIndex} annotations completed
                 </span>
                 <div className="flex items-center space-x-2">
                   <button
+                    data-testid="previous-button"
                     onClick={async () => {
                       // Timer resetten bei Navigation
                       resetTimer();
@@ -1212,7 +1260,7 @@ function App() {
                       await fetchSettings(); // Update settings after navigation
                     }}
                     disabled={currentIndex <= 0 || isLoadingData}
-                    className="px-4 py-1 rounded bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:disabled:bg-gray-800 dark:disabled:text-gray-500 text-gray-600 dark:text-gray-300"
+                    className="px-4 py-1 rounded-sm bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:disabled:bg-gray-800 dark:disabled:text-gray-500 text-gray-600 dark:text-gray-300"
                     title="Previous annotation"
                   >
                     ←
@@ -1230,7 +1278,7 @@ function App() {
                       await fetchSettings(); // Update settings after navigation
                     }}
                     disabled={currentIndex >= settingsCurrentIndex || isLoadingData}
-                    className="px-4 py-1 rounded bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:disabled:bg-gray-800 dark:disabled:text-gray-500 text-gray-600 dark:text-gray-300"
+                    className="px-4 py-1 rounded-sm bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:disabled:bg-gray-800 dark:disabled:text-gray-500 text-gray-600 dark:text-gray-300"
                     title="Next annotation"
                   >
                     →
@@ -1248,7 +1296,7 @@ function App() {
                       await fetchSettings(); // Update settings after navigation
                     }}
                     disabled={currentIndex + 1 > settingsCurrentIndex || isLoadingData}
-                    className="px-4 py-1 rounded bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:disabled:bg-gray-800 dark:disabled:text-gray-500 text-gray-600 dark:text-gray-300"
+                    className="px-4 py-1 rounded-sm bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:disabled:bg-gray-800 dark:disabled:text-gray-500 text-gray-600 dark:text-gray-300"
                     title="Jump to current working position"
                   >
                     <ArrowLineRightIcon size={22} weight="fill" />
@@ -1263,13 +1311,19 @@ function App() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
+        {backendError && (
+          <div role="alert" data-testid="backend-error" className="mb-6 p-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm">
+            <strong className="font-semibold">Error:</strong> {backendError}
+          </div>
+        )}
+
         {/* Main Content Area */}
         <div className="lg:col-span-2 space-y-6">
 
 
           {/* Guidelines Card */}
           {annotationGuideline && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xs border dark:border-gray-700 p-6">
               <details className="group">
                 <summary className="flex justify-between items-center cursor-pointer list-none">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Guidelines</h2>
@@ -1288,7 +1342,7 @@ function App() {
             </div>
           )}
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xs border dark:border-gray-700 p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Text to annotate</h2>
               {enablePrePrediction && (
@@ -1312,6 +1366,7 @@ function App() {
               )}
             </div>
             <div className="text-xl text-center bg-gray-100 dark:bg-gray-700 p-4 rounded-xl leading-relaxed text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              data-testid="annotation-text"
               onClick={handleTextClick}
               title="Click to add annotation"
             >
@@ -1331,7 +1386,7 @@ function App() {
 
 
           {/* Annotation Form */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xs border dark:border-gray-700 p-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Add aspect</h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
               {consideredSentimentElements.includes("aspect_term") && (
@@ -1390,6 +1445,7 @@ function App() {
                     {isFieldValid("aspect_category") && <span className="text-blue-500 bg-blue-50 dark:bg-blue-900/50 rounded-full w-4 h-4 flex items-center justify-center ml-2 text-xs">✓</span>}
                   </label>
                   <select
+                    data-testid="new-aspect-category"
                     value={newAspect.aspect_category}
                     onChange={(e) => setNewAspect({ ...newAspect, aspect_category: e.target.value })}
                     className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 cursor-pointer"
@@ -1409,6 +1465,7 @@ function App() {
                     {isFieldValid("sentiment_polarity") && <span className="text-blue-500 bg-blue-50 dark:bg-blue-900/50 rounded-full w-4 h-4 flex items-center justify-center ml-2 text-xs">✓</span>}
                   </label>
                   <select
+                    data-testid="new-sentiment-polarity"
                     value={newAspect.sentiment_polarity}
                     onChange={(e) => setNewAspect({ ...newAspect, sentiment_polarity: e.target.value })}
                     className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 cursor-pointer"
@@ -1424,6 +1481,7 @@ function App() {
 
             <div className="flex justify-end">
               <button
+                data-testid="add-aspect-button"
                 onClick={addAnnotation}
                 disabled={!consideredSentimentElements.every(element => {
                   const value = newAspect[element];
@@ -1435,7 +1493,7 @@ function App() {
               </button>
             </div>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xs border dark:border-gray-700 p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Added annotations ({aspectList.length})</h2>
               {aspectList.length > 0 && (
@@ -1443,7 +1501,7 @@ function App() {
                   onClick={clearAllAnnotations}
                   className="px-3 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                 >
-                  Delete all annotations ({aspectList.length}) <div className="bg-red-50 px-2 py-1 rounded-lg bg-opacity-30 border text-center"><BackspaceIcon size={20} /></div>
+                  Delete all annotations ({aspectList.length}) <div className="bg-red-50/30 px-2 py-1 rounded-lg border text-center"><BackspaceIcon size={20} /></div>
                 </button>
               )}
             </div>
@@ -1459,16 +1517,16 @@ function App() {
                     ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700'
                     : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600';
                   return (
-                    <div key={index} className={`border rounded-lg p-3 flex items-center gap-3 ${baseClasses}`}>
+                    <div key={index} data-testid="annotation-item" className={`border rounded-lg p-3 flex items-center gap-3 ${baseClasses}`}>
                       {/* Color indicator */}
                       {aspect.isLLMGenerated ? <SparkleIcon size={16} weight="fill" color={isDark ? "white" : "black"} /> : <SparkleIcon size={16} weight="fill" color="#00000000" />}
-                      <div className={`flex justify-center items-center w-6 h-6 rounded-full ${colorClasses.bg300} flex-shrink-0`}>
+                      <div className={`flex justify-center items-center w-6 h-6 rounded-full ${colorClasses.bg300} shrink-0`}>
 
                       </div>
 
                       {consideredSentimentElements.includes("aspect_term") && (
                         <div
-                          className="flex-1 p-2 border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-gray-100"
+                          className="flex-1 p-2 border border-gray-200 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-gray-100"
                           onClick={() => {
                             openPhrasePopupForEdit("aspect_term", index, aspect.aspect_term);
                           }}
@@ -1477,7 +1535,7 @@ function App() {
                         </div>
                       )}                      {consideredSentimentElements.includes("opinion_term") && (
                         <div
-                          className="flex-1 p-2 border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-gray-100"
+                          className="flex-1 p-2 border border-gray-200 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-gray-100"
                           onClick={() => {
                             openPhrasePopupForEdit("opinion_term", index, aspect.opinion_term);
                           }}
@@ -1489,8 +1547,9 @@ function App() {
                       {consideredSentimentElements.includes("aspect_category") && (
                         <select
                           value={aspect.aspect_category}
+                          data-testid="annotation-item-category"
                           onChange={(e) => updateAspectItem(index, "aspect_category", e.target.value)}
-                          className="flex-1 p-2 border border-gray-200 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 cursor-pointer"
+                          className="flex-1 p-2 border border-gray-200 dark:border-gray-600 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 cursor-pointer"
                         >
                           {validAspectCategories.map(cat => (
                             <option key={cat} value={cat}>{cat}</option>
@@ -1502,7 +1561,7 @@ function App() {
                         <select
                           value={aspect.sentiment_polarity}
                           onChange={(e) => updateAspectItem(index, "sentiment_polarity", e.target.value)}
-                          className="flex-1 p-2 border border-gray-200 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 cursor-pointer"
+                          className="flex-1 p-2 border border-gray-200 dark:border-gray-600 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 cursor-pointer"
                         >
                           {validSentimentPolarities.map(sentiment => (
                             <option key={sentiment} value={sentiment}>{sentiment}</option>
@@ -1512,7 +1571,7 @@ function App() {
 
                       <button
                         onClick={() => duplicateAspectItem(index)}
-                        className="flex justify-center items-center w-8 h-8 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 rounded flex-shrink-0 border border-blue-200 dark:border-blue-800"
+                        className="flex justify-center items-center w-8 h-8 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 rounded-sm shrink-0 border border-blue-200 dark:border-blue-800"
                         title="Duplicate"
                       >
                         <CopyIcon size={16} />
@@ -1520,7 +1579,7 @@ function App() {
 
                       <button
                         onClick={() => deleteAspectItem(index)}
-                        className="w-8 h-8 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 rounded flex-shrink-0 border border-red-200 dark:border-red-800"
+                        className="w-8 h-8 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 rounded-sm shrink-0 border border-red-200 dark:border-red-800"
                         title="Delete"
                       >
                         🗑️
@@ -1535,6 +1594,7 @@ function App() {
           <div className="mt-6 flex gap-3 justify-end">
             {aspectList.length > 0 ? (
               <button
+                data-testid="save-button"
                 onClick={goToNext}
                 disabled={false}
                 className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
@@ -1543,6 +1603,7 @@ function App() {
               </button>
             ) : (
               <button
+                data-testid="save-empty-button"
                 onClick={annotateEmpty}
                 disabled={false}
                 className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
@@ -1556,7 +1617,7 @@ function App() {
         {/* Phrase Selection Popup */}
         {showPhrasePopup && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
             onClick={closePhrasePopup}
           >
             <div
@@ -1598,7 +1659,7 @@ function App() {
                         )}
                         {autoCleanPhrases && !isImplicitAspect && (
                           <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                            <span className="bg-blue-600 px-2 py-1 mr-1 rounded text-white">Blue highlight</span>: Selected phrase (cleaned automatically if needed)
+                            <span className="bg-blue-600 px-2 py-1 mr-1 rounded-sm text-white">Blue highlight</span>: Selected phrase (cleaned automatically if needed)
                           </div>
                         )}
                         <div className="text-lg leading-relaxed p-4 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
@@ -1679,7 +1740,7 @@ function App() {
                         )}
                         {autoCleanPhrases && !isImplicitOpinion && (
                           <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                            <span className="bg-blue-600 px-2 py-1 mr-1 rounded text-white">Blue highlight</span>: Selected phrase (cleaned automatically if needed)
+                            <span className="bg-blue-600 px-2 py-1 mr-1 rounded-sm text-white">Blue highlight</span>: Selected phrase (cleaned automatically if needed)
                           </div>
                         )}
                         <div className="text-lg leading-relaxed p-4 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
@@ -1774,7 +1835,7 @@ function App() {
                     {autoCleanPhrases && !((currentEditingField === "aspect_term" && isImplicitAspect) ||
                       (currentEditingField === "opinion_term" && isImplicitOpinion)) && (
                         <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                          <span className="bg-blue-300 dark:bg-blue-600 px-1 rounded text-black dark:text-white">Blue highlight</span>: Selected phrase (cleaned automatically if needed)
+                          <span className="bg-blue-300 dark:bg-blue-600 px-1 rounded-sm text-black dark:text-white">Blue highlight</span>: Selected phrase (cleaned automatically if needed)
                         </div>
                       )}
                     <div className="text-lg leading-relaxed p-4 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">

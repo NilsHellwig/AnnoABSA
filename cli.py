@@ -15,7 +15,8 @@ import socket
 import signal
 import atexit
 from typing import Dict, Any, List
-from typing import List, Dict, Any
+
+from version import __version__
 
 # Global variable to track backend process
 backend_process = None
@@ -41,10 +42,11 @@ def signal_handler(signum, frame):
     cleanup_backend()
 
 
-# Register cleanup functions
-atexit.register(cleanup_backend)
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
+def register_cleanup_handlers():
+    """Register cleanup functions (called from main so importing this module has no side effects)."""
+    atexit.register(cleanup_backend)
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
 
 class ABSAAnnotatorConfig:
@@ -225,7 +227,17 @@ class ABSAAnnotatorConfig:
             print(f"🤖 AI Provider: Local LLM (Ollama)")
 
 
-def start_backend(port: int = 8000, host: str = "localhost", data_path: str = None, config: ABSAAnnotatorConfig = None):
+def default_allowed_origins(frontend_host: str, frontend_port: int, backend_host: str, backend_port: int) -> List[str]:
+    """Origins allowed to call the backend: the frontend and the backend itself (API docs)."""
+    origins = []
+    for host, port in ((frontend_host, frontend_port), (backend_host, backend_port)):
+        hosts = ["localhost", "127.0.0.1"] if host in (
+            "localhost", "127.0.0.1", "0.0.0.0", "::") else [host]
+        origins += [f"http://{h}:{port}" for h in hosts]
+    return origins
+
+
+def start_backend(port: int = 8000, host: str = "localhost", data_path: str = None, config: ABSAAnnotatorConfig = None, allowed_origins: List[str] = None):
     """Start the FastAPI backend server."""
     global backend_process
     try:
@@ -237,6 +249,10 @@ def start_backend(port: int = 8000, host: str = "localhost", data_path: str = No
             return
 
         print(f"🚀 Starting backend server on {host}:{port}...")
+        if allowed_origins:
+            os.environ['ABSA_ALLOWED_ORIGINS'] = ",".join(allowed_origins)
+        if host not in ("0.0.0.0", "::"):
+            os.environ['ABSA_ALLOWED_HOSTS'] = host
         if data_path:
             os.environ['ABSA_DATA_PATH'] = data_path
         if config:
@@ -277,12 +293,11 @@ def start_frontend(port: int = 3000, host: str = "localhost", backend_host: str 
         print(f"🌐 Starting frontend development server on {host}:{port}...")
         os.chdir(frontend_path)
 
-        # Set environment variables for Vite
+        # Set environment variables for Vite (read in vite.config.js)
         env = os.environ.copy()
         env["VITE_BACKEND_URL"] = f"http://{backend_host}:{backend_port}"
-
-        # Update vite.config.js to use the specified port
-        update_vite_port_config(port, host)
+        env["ANNOABSA_FRONTEND_PORT"] = str(port)
+        env["ANNOABSA_FRONTEND_HOST"] = host
 
         subprocess.run(["npm", "run", "dev"], check=True, env=env)
     except subprocess.CalledProcessError as e:
@@ -296,14 +311,14 @@ def start_frontend(port: int = 3000, host: str = "localhost", backend_host: str 
         return False
 
 
-def start_full_app(backend_port: int = 8000, backend_host: str = "localhost", frontend_port: int = 3000, frontend_host: str = "localhost", data_path: str = None, config: ABSAAnnotatorConfig = None):
+def start_full_app(backend_port: int = 8000, backend_host: str = "localhost", frontend_port: int = 3000, frontend_host: str = "localhost", data_path: str = None, config: ABSAAnnotatorConfig = None, allowed_origins: List[str] = None):
     """Start both backend and frontend servers."""
-    print("🚀 Starting AnnoABSA...")
+    print(f"🚀 Starting AnnoABSA v{__version__}...")
     print("=" * 50)
 
     # Start backend in a separate thread
     backend_thread = threading.Thread(target=start_backend, args=(
-        backend_port, backend_host, data_path, config))
+        backend_port, backend_host, data_path, config, allowed_origins))
     backend_thread.daemon = False  # Don't make it daemon so we can properly clean up
     backend_thread.start()
 
@@ -328,31 +343,6 @@ def start_full_app(backend_port: int = 8000, backend_host: str = "localhost", fr
         sys.exit(0)
 
 
-def update_vite_port_config(port: int, host: str):
-    """Update vite.config.js with the specified port and host."""
-    vite_config_path = "vite.config.js"
-    if not os.path.exists(vite_config_path):
-        return
-
-    # Read current config
-    with open(vite_config_path, 'r') as f:
-        content = f.read()
-
-    # Replace the server configuration
-    import re
-    pattern = r'server:\s*\{[^}]*\}'
-    replacement = f'''server: {{
-    port: {port},
-    host: '{host}',
-    open: true
-  }}'''
-
-    if re.search(pattern, content):
-        content = re.sub(pattern, replacement, content)
-        with open(vite_config_path, 'w') as f:
-            f.write(content)
-
-
 def is_port_in_use(host: str, port: int) -> bool:
     """Check if a port is already in use."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -365,6 +355,7 @@ def is_port_in_use(host: str, port: int) -> bool:
 
 def main():
     """Main CLI entry point."""
+    register_cleanup_handlers()
     parser = argparse.ArgumentParser(
         prog="annoabsa",
         description="🎯 AnnoABSA - Configure and run your annotation environment",
@@ -388,7 +379,16 @@ Examples:
   
   # Load config and override some settings
   annoabsa examples/restaurant_reviews.csv --load-config examples/example_config.json --polarities positive negative
+
+  # Export annotations to a CSV that is safe to open in Excel/LibreOffice
+  annoabsa examples/restaurant_reviews.json --export annotations_export.csv
         """
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}"
     )
 
     parser.add_argument(
@@ -577,6 +577,20 @@ Examples:
         help="IP address for the frontend server (default: localhost)"
     )
 
+    parser.add_argument(
+        "--allowed-origins",
+        nargs="+",
+        metavar="ORIGIN",
+        help="Origins (e.g. http://192.168.0.10:3000) allowed to access the backend. "
+             "Default: the frontend and backend addresses. Requests from other websites are rejected."
+    )
+
+    parser.add_argument(
+        "--export",
+        metavar="CSV_PATH",
+        help="Export the data file (including annotations) to a spreadsheet-safe CSV file and exit"
+    )
+
     args = parser.parse_args()
 
     # Check if data file exists
@@ -591,6 +605,24 @@ Examples:
             f"❌ Error: Unsupported file format '{file_extension}'. Use .csv or .json files.")
         sys.exit(1)
 
+    # Check file content before starting anything
+    from data_io import check_data_file, export_csv, DataFileError
+    problems = check_data_file(args.data_path)
+    if problems:
+        print(f"❌ Error: Data file '{args.data_path}' is malformed:")
+        for problem in problems:
+            print(f"   - {problem}")
+        sys.exit(1)
+
+    if args.export:
+        try:
+            n_rows = export_csv(args.data_path, args.export)
+        except (DataFileError, OSError) as e:
+            print(f"❌ Export failed: {e}")
+            sys.exit(1)
+        print(f"✅ Exported {n_rows} rows to {args.export} (spreadsheet formulas neutralised)")
+        return
+
     print(f"📂 Using {file_extension[1:].upper()} file: {args.data_path}")
     if file_extension == '.csv':
         print("💡 Note: CSV file will be read/written with UTF-8 encoding")
@@ -603,6 +635,9 @@ Examples:
         config.load_config(args.load_config)
 
     # Apply command line arguments (these override loaded config)
+    if args.session_id:
+        config.set_session_id(args.session_id)
+
     if args.elements:
         config.set_sentiment_elements(args.elements)
 
@@ -669,12 +704,20 @@ Examples:
     frontend_port = args.frontend_port
     frontend_host = args.frontend_ip
 
+    allowed_origins = args.allowed_origins or default_allowed_origins(
+        frontend_host, frontend_port, backend_host, backend_port)
+    if "*" in allowed_origins:
+        print("⚠️  --allowed-origins '*': any website opened in the annotator's browser can modify the data!")
+    elif not args.allowed_origins and frontend_host in ("0.0.0.0", "::"):
+        print("💡 Frontend listens on all interfaces: pass --allowed-origins http://<server-ip>:"
+              f"{frontend_port} so annotators on other machines can save.")
+
     if args.backend:
-        start_backend(backend_port, backend_host, args.data_path, config)
+        start_backend(backend_port, backend_host, args.data_path, config, allowed_origins)
     else:
         # Default behavior: start both servers
         start_full_app(backend_port, backend_host, frontend_port,
-                       frontend_host, args.data_path, config)
+                       frontend_host, args.data_path, config, allowed_origins)
 
 
 if __name__ == "__main__":

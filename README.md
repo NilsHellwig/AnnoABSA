@@ -151,6 +151,8 @@ You can display PDF guidelines directly in the annotation interface to ensure co
 
 ### Installation
 
+Requirements: Python ≥ 3.11 and Node.js ≥ 20.19 (or ≥ 22.12).
+
 ```bash
 # Install Python dependencies
 pip install -r requirements.txt
@@ -176,8 +178,8 @@ cd frontend && npm install && cd ..
 ### Manual Setup (Alternative)
 
 ```bash
-# Backend
-pip install fastapi uvicorn pandas rank-bm25
+# Backend (Python ≥ 3.11)
+pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 
 # Frontend (in new terminal)
@@ -260,6 +262,37 @@ Save and reuse configurations with JSON files:
 | `--n-few-shot`                      | Maximum number of few-shot examples to include in LLM prompts                              | `10`                                                             |
 | `--save-config`                     | Save config to JSON file                                                                   | -                                                                |
 | `--load-config`                     | Load config from JSON file                                                                 | -                                                                |
+| `--allowed-origins`                 | Origins (e.g. `http://192.168.0.10:3000`) allowed to access the backend                    | Frontend and backend address                                     |
+| `--export`                          | Export data and annotations to a spreadsheet-safe CSV file and exit                        | -                                                                |
+| `--version`                         | Print the AnnoABSA version and exit                                                        | -                                                                |
+
+### Security and Multi-Annotator Use
+
+- **Origin check:** The backend only accepts requests from the AnnoABSA frontend. Requests that other websites open in the annotator's browser might send are rejected. If annotators reach the frontend through another address (e.g. `--frontend-ip 0.0.0.0` on a server), list that address with `--allowed-origins http://<server-ip>:3000`.
+- **Several annotators on one data file:** Saves are serialised and written atomically, so several annotators can use one backend and one data file without corrupting it. For independent annotations (e.g. to compute inter-annotator agreement), start one backend per annotator, each with its own copy of the data file.
+- **Opening results in Excel or LibreOffice:** Use `--export annotations.csv` to create a copy in which cells starting with `=`, `+`, `-` or `@` are prefixed with `'`, so they are not executed as formulas. The working data file is left unchanged, as altering the text would invalidate stored phrase positions.
+- **Malformed input files** are reported with the location of the problem when AnnoABSA starts.
+
+See [CHANGELOG.md](CHANGELOG.md) for the changes in each version.
+
+---
+
+## 🧪 Testing
+
+```bash
+# Backend tests (pytest): API, cross-origin protection, input validation, export, concurrent annotators
+pip install -r requirements-dev.txt
+pytest
+
+# End-to-end tests (Playwright) - start backend and frontend automatically
+cd frontend
+npx playwright install chromium     # once
+PYTHON=python3 npm run test:e2e     # PYTHON: interpreter with requirements.txt installed
+
+# Frontend checks
+npm run typecheck
+npm run format:check                # npm run format to apply Prettier
+```
 
 ---
 
